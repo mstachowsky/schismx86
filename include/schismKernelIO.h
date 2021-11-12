@@ -42,6 +42,7 @@ void terminal_putchar(char c);
 void terminal_write(const char* data, size_t size);
 void terminal_writestring(const char* data);
 void terminal_writeint(int data);
+void terminal_writeuint32(uint32_t data);
 void terminal_handle_newline();
 void kernel_printf(const char* data,...);
 

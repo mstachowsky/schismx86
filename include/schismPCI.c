@@ -1,10 +1,30 @@
 #include "schismPCI.h"
 
 
-//this function writes to the PCI port
+//this function writes the address to the PCI port
 void _PCI_writeAddr(uint32_t address)
 {
 	_IOPORT_writeDWord((uint16_t)PCI_ADDR,address);
+}
+
+//write a DWord to the PCI bus's DATA address
+void _PCI_writeDataRaw(uint32_t data)
+{
+	_IOPORT_writeDWord((uint16_t)PCI_DATA,data);
+}
+
+/*
+	write a DWORD data to address address.  To do this it's weird: you write the address,
+	then your write the data, and the PCI bus figures itself out.  I am 45% sure that what happens here
+	is that you prime the PCI bus by lighting up the proper address lines, then when you
+	write the data to the data address it signals a transfer to occur...I think.
+*/
+void _PCI_writeDataToAddress(uint32_t address,uint32_t data)
+{
+	//first write the address
+	_PCI_writeAddr(address);
+	//then write the data
+	_PCI_writeDataRaw(data); //I am 32% sure that this is all I'm supposed to do...
 }
 
 //this function reads data from the PCI port
@@ -13,7 +33,8 @@ uint32_t _PCI_readData()
 	return _IOPORT_readDWord((uint16_t)(PCI_DATA));
 }
 
-//gets a PCI bus, device, function string ready to query
+//gets a PCI bus, device, function, offset string ready to query
+//essentially, this creates an address to write to or read from
 uint32_t _PCI_makeBusDevFunc(uint8_t bus, uint8_t device, uint8_t funct,uint8_t regOffset)
 {
 	uint32_t addr = 0;

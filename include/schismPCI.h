@@ -24,12 +24,19 @@
 //PCI register definitions
 #define PCI_REGISTER_IDS 0
 #define PCI_REGISTER_CLASS 8
+#define PCI_REGISTER_CTRL 4
 
 //PCI specific definitions
 #define PCI_NO_DEVICE 0xFFFF //this is what you get when enumerating and nothing is there
 
-//this function writes to the PCI port
+//this function writes to the PCI port's PCI_ADDR
 void _PCI_writeAddr(uint32_t address);
+
+//write a DWord to the PCI bus's DATA address
+void _PCI_writeDataRaw(uint32_t data);
+
+//write a DWORD data to address address
+void _PCI_writeDataToAddress(uint32_t address,uint32_t data);
 
 //this function reads data from the PCI port
 uint32_t _PCI_readData();

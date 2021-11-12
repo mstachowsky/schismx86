@@ -66,7 +66,12 @@ void terminal_putchar(char c)
 void terminal_write(const char* data, size_t size) 
 {
 	for (size_t i = 0; i < size; i++)
-		terminal_putchar(data[i]);
+	{
+		if(data[i] != '\n')
+			terminal_putchar(data[i]);
+		else
+			terminal_handle_newline();
+	}
 }
  
 void terminal_writestring(const char* data) 
@@ -86,6 +91,37 @@ void terminal_writeint(int data)
 		terminal_putchar('-');
 		data = -data;
 	}
+	if(data == 0)
+	{
+		terminal_putchar(ZERO_CHAR);
+		return;
+	}
+	
+	while(data!= 0)
+	{
+		outString[inputSize] = data%10 + ZERO_CHAR;
+		inputSize++;
+		data /= 10;
+	}
+	
+	//now reverse the array
+	int maxSize = inputSize-1; //inputSize has been ++'d one too many times
+	for(int i = inputSize-1; i >= 0; i--)
+	{
+		outStringReversed[maxSize-i] = outString[i];
+	}
+	terminal_writestring(outStringReversed);
+	return;
+}
+
+//almost identical to writeInt except what is being sent in and no check for negative
+void terminal_writeuint32(uint32_t data)
+{
+	//we need an array of characters.  Its an integer, which in a 32 bit OS is
+	//max 10 characters.  +1 for the zero character and we're good to go
+	char outString[INT_OUTPUT_SIZE] = {0}; //the way we are doing this gives LSD first, so we need to reverse it later
+	char outStringReversed[INT_OUTPUT_SIZE] = {0}; //this is the actual output string
+	int inputSize = 0;
 	if(data == 0)
 	{
 		terminal_putchar(ZERO_CHAR);
@@ -146,6 +182,11 @@ void kernel_printf(const char* data,...)
 					int nextOut = va_arg(vargin,int);
 					terminal_writeint(nextOut);
 				}
+				else if(data[i] == 'u')
+				{
+					uint32_t nextOut = va_arg(vargin,uint32_t);
+					terminal_writeuint32(nextOut);
+				}
 			}
 		}
 		i++;
@@ -177,7 +218,7 @@ void terminal_handle_newline()
 		//blank out the last line
 		for(size_t i = 0; i < VGA_WIDTH; i++)
 		{
-			size_t index = terminal_row*VGA_WIDTH + i;
+			size_t index = (terminal_row-1)*VGA_WIDTH + i;
 			terminal_buffer[index] = vga_entry(' ', terminal_color);
 		}
 	}

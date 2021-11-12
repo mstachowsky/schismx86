@@ -208,7 +208,7 @@ void terminal_handle_newline()
 	{
 		terminal_row--;
 		//now copy everything
-		for (size_t y = 1; y < VGA_HEIGHT-1; y++) {
+		for (size_t y = 1; y < VGA_HEIGHT; y++) {
 			for (size_t x = 0; x < VGA_WIDTH; x++) {
 				size_t index = y * VGA_WIDTH + x;
 				size_t prevRowIndx = (y-1)*VGA_WIDTH + x;
@@ -218,7 +218,7 @@ void terminal_handle_newline()
 		//blank out the last line
 		for(size_t i = 0; i < VGA_WIDTH; i++)
 		{
-			size_t index = (terminal_row-1)*VGA_WIDTH + i;
+			size_t index = (VGA_HEIGHT-1)*VGA_WIDTH + i;
 			terminal_buffer[index] = vga_entry(' ', terminal_color);
 		}
 	}

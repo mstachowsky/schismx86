@@ -36,7 +36,21 @@ undefined behavior.
 stack_bottom:
 .skip 16384 # 16 KiB
 stack_top:
- 
+
+.section .data
+//Now make me a heap
+.global stack_bottom
+.global stack_top
+.global st
+.global sb
+.global multibootHeaderLocation
+
+multibootHeaderLocation:
+	.long	
+st:
+	.long stack_top
+sb:
+	.long stack_bottom
 /*
 The linker script specifies _start as the entry point to the kernel and the
 bootloader will jump to this position once the kernel has been loaded. It
@@ -58,6 +72,10 @@ _start:
 	itself. It has absolute and complete power over the
 	machine.
 	*/
+	
+	//at this point, I am 27% sure that the memory location for the multiboot header is in ebx
+	mov %ebx, multibootHeaderLocation
+
  
 	/*
 	To set up a stack, we set the esp register to point to the top of the
@@ -85,6 +103,9 @@ _start:
 	stack since (pushed 0 bytes so far), so the alignment has thus been
 	preserved and the call is well defined.
 	*/
+	.global start_start
+	start_start:
+		.long _start
 	call kernel_main
  
 	/*

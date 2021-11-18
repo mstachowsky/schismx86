@@ -46,13 +46,31 @@ uint32_t _PCI_makeBusDevFunc(uint8_t bus, uint8_t device, uint8_t funct,uint8_t 
 	return addr;
 }
 
+//finds the last entry in the pci bus record
+pciRecord* _PCI_findLastEntry(pciRecord* pciBus)
+{
+	pciRecord* pciDevice = pciBus;
+	//if this is an uninitialized bus, just return it
+	if(pciDevice->nextRecord == UNINITIALIZED_RECORD)
+		return pciBus;
+	while(pciDevice->nextRecord != 0)
+	{
+		pciDevice = pciDevice->nextRecord;
+	}
+	return pciDevice;
+}
+
 /*
 	Enumerates PCI stuff.  This is SUPER brute force: I go through every
 	bus, every device on each bus, and every function
+	
+	pciBus is the master kernel record for the location of the PCI data
 */
-void _PCI_enumerate()
+void _PCI_enumerate(pciRecord* pciBus)
 {
 	kernel_printf("Enumerating PCI Devices \n");
+	
+	pciRecord* pciDevice = pciBus;
 	uint8_t bus = 0;
 	uint8_t dev = 0;
 	uint8_t function = 0;
@@ -70,21 +88,61 @@ void _PCI_enumerate()
 				uint32_t deviceID = (outData >> PCI_HIGH_WORD);
 				if(vendorID != PCI_NO_DEVICE)
 				{
-					//we found one! So now we want its data.
-					
+					//we found one! So now we want its data.  Make a new one and link it in
+					pciDevice = _PCI_findLastEntry(pciBus);
+					pciRecord* curDevice;
+					if(pciDevice->nextRecord != UNINITIALIZED_RECORD)
+					{
+						pciDevice->nextRecord = (pciRecord*)kernel_malloc(sizeof(pciRecord));
+						curDevice = pciDevice->nextRecord;
+					}
+					else
+					{
+						//this is the first device we've found and the bus is uninitialized,
+						//so initialize the bus
+						curDevice = pciDevice;
+						pciDevice->nextRecord = 0;
+					}
 					//get vendor and device ID first
-					kernel_printf("Valid device. Bus: %d Device: %d Function: %d\n",bus,dev,function);
+				//	kernel_printf("Valid device. Bus: %d Device: %d Function: %d\n",bus,dev,function);
+					curDevice->bus = bus;
+					curDevice->device = dev;
+					curDevice->function = function;
 					
 					//now get the class and subclass
 					uint32_t pciAddr = _PCI_makeBusDevFunc(bus,dev,function,PCI_REGISTER_CLASS);
 					_PCI_writeAddr((uint32_t)pciAddr);
 					outData = _PCI_readData();
 					uint32_t classData = outData >> PCI_HIGH_WORD; //high byte is class code, low byte is subclass
+					//load it into the record
+					curDevice->deviceClass = classData>>8;
+					curDevice->subclass = classData&0xFF;
+					
 					uint32_t extraData = outData & PCI_LOW_WORD; //high byte is Prog IF, low byte is revision ID
-					kernel_printf("\t Class Code: %d Subclass: %d Prog IF: %d \n",classData>>8,classData&0xFF,extraData>>8);	
+					curDevice->progIF = extraData>>8;
+					curDevice->revNo = extraData&0xFF;
+					curDevice->nextRecord = 0;
+				//	kernel_printf("\t Class Code: %d Subclass: %d Prog IF: %d \n",classData>>8,classData&0xFF,extraData>>8);	
 				}
 			}
 		}
 	}
 	kernel_printf("Done\n");
+}
+
+void _PCI_output(pciRecord* pciBus)
+{
+	pciRecord* pciDevice = pciBus;
+	if(pciDevice->nextRecord == UNINITIALIZED_RECORD)
+		kernel_printf("PCI bus not initialized!\n");
+	else
+	{
+		while(pciDevice->nextRecord != 0)
+		{
+			kernel_printf("BDF: %u, %u, %u, Class: %u, Subclass: %u, IF: %u \n",pciDevice->bus,pciDevice->device,pciDevice->function,pciDevice->deviceClass,pciDevice->subclass,pciDevice->progIF);
+			pciDevice = pciDevice->nextRecord;
+		}
+		//now we do the last one, since the while loop ends one early
+		kernel_printf("BDF: %u, %u, %u, Class: %u, Subclass: %u, IF: %u \n",pciDevice->bus,pciDevice->device,pciDevice->function,pciDevice->deviceClass,pciDevice->subclass,pciDevice->progIF);
+	}
 }

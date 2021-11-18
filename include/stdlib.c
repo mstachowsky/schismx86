@@ -1,54 +1,33 @@
 #include "stdlib.h"
 
-//this will search for where the heapBottom is, and then figure out
-//how big the heap is allowed to be
-void initMalloc(heapData* heap,multiBootHeader mbh)
+void initKernelMalloc(heapData* heap,ramData masterRam,uint32_t heapMaxSize)
 {
-	//OK, this is fairly "simple" - find the memory region that contains the
-	//heap bottom, which is a global, and then return it
+	//this actually isn't SUPER difficult now that kernel_util handles all the memory lookup.
+	//the heap goes right at heapBottom.  We jsut need to make sure we didn't accidentally
+	//ask for more memory than we have
 	
-	uint32_t byteCount = 0; //gets us out of the while loop
-	int i = 0; //keeps track of where in the structure we are
-	while(byteCount < mbh.mmap_length)
+	if(heapMaxSize > masterRam.ramSize)
 	{
-		//need to know how big this region is to increment byteCount
-		uint32_t memregionSize = mbh.mmap_addr[i];
-		i+=1; //get ready to read the next uint32_t
-		
-		uint32_t baseAddr = mbh.mmap_addr[i] + mbh.mmap_addr[i+1];
-		i+=2;
-		uint32_t size = mbh.mmap_addr[i] + mbh.mmap_addr[i+1];
-		i+=2;
-		
-		//the last part is the type of memory
-		uint32_t type = mbh.mmap_addr[i];
-		i++;
-		
-		//increment byteCount: add the toal bytes of the memory region, plus
-		//a sizeof(uint32_t) to account for the size variable of the region
-		byteCount += memregionSize + sizeof(uint32_t);
-		
-		//figure out the final address of the region
-		uint32_t endAddr = baseAddr + size;
-		
-		//now check to see if our pointer is in the right range and the type is available RAM
-		if((heapBottom > (uint32_t*)baseAddr) && (heapBottom < (uint32_t*)endAddr) && type == 1)
-		{
-			//we've found our region
-			heap->heapStart = (void*)heapBottom;
-			heap->heapSize = size;
-			//write the data to it
-			*(uint32_t*)(heap->heapStart) = heap->heapSize; //indicates the size of this block.  At the
-			//start, the block is all of available memory
-			*(uint32_t*)(heap->heapStart+sizeof(uint32_t)) = 0; //indicates no more blocks
-			*(uint32_t*)(heap->heapStart+2*sizeof(uint32_t)) = FREE_MEMORY; //indicates free memory
-			return;
-		}
+		kernel_printf("Malloc initialization failure: Heap is too big\n");
+		heap->heapStart = 0; //nullify it
+		return;
 	}
+	
+	//if not, we're rockin'.  Let's go!
+	heap->heapStart = (void*)heapBottom;
+	heap->heapSize = heapMaxSize;
+	
+	//now set up the freelist
+	*(uint32_t*)(heap->heapStart) = heap->heapSize; //indicates the size of this block.  At the
+	//start, the block is all of available memory
+	*(uint32_t*)(heap->heapStart+sizeof(uint32_t)) = 0; //indicates no more blocks
+	*(uint32_t*)(heap->heapStart+2*sizeof(uint32_t)) = FREE_MEMORY; //indicates free memory
+	
+	kernel_printf("Malloc allocated at %u with size %u\n",heapBottom,heapMaxSize);
 }
 
 //allocates size bytes on the heap
-void* malloc(uint32_t size)
+void* kernel_malloc(uint32_t size)
 {
 	//begin at the first block
 	uint32_t* block = (uint32_t*)masterHeap.heapStart;

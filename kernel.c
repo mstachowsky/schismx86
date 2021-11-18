@@ -1,4 +1,3 @@
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -14,6 +13,8 @@
 #include "schismAHCI.h"
 #include "schismMultiBoot.h"
 #include "stdlib.h"
+#include "kernel_util.h"
+#include "schismGDT.h"
 
 /* Check if the compiler thinks you are targeting the wrong operating system. */
 #if defined(__linux__)
@@ -24,8 +25,6 @@
 #if !defined(__i386__)
 #error "This tutorial needs to be compiled with a ix86-elf compiler"
 #endif
-
-//uint32_t* heapBottom __attribute__((section("heapLoc")));
 
 
 extern uintptr_t heapLoc;
@@ -83,46 +82,46 @@ void kernel_main(void)
 {
 	/* Initialize terminal interface */
 	terminal_initialize();
-	//heapBottom = &heapBottom; //can you do this?
+	
 	kernel_printf("Schism Initialized.  Ready to Discover \n");
+	
+	//obtain the multiboot header
 	multiBootHeader mbh;
 	_MB_setFlagsAndAddr(multibootHeaderLocation, &mbh);
 	_MB_FillHeader(&mbh);
 	
-	//_MB_printMMap(mbh);
+	//Get ready for RAM data
+	initRamData(mbh,&kernelMasterRam);
 	
-	//now initialize malloc.  It's heap time!
-	initMalloc(&masterHeap,mbh);
+	//did it work?
+	kernel_printf("Ram found. Ram start: %u, Ram size (B): %u \n",kernelMasterRam.ramStart, kernelMasterRam.ramSize);
 	
-	//uhoh...it's malloc time
+	//now initialize malloc.  It's heap time!  Let's make a 4MB kernel heap for now
+	kernel_printf("Initializing Malloc\n");
+	initKernelMalloc(&masterHeap,kernelMasterRam,KERNEL_HEAP_MAX);
 	
-	kernel_printf("Block size: %u\n",*(uint32_t*)(masterHeap.heapStart));
-	kernel_printf("Block Next: %u\n",*(uint32_t*)(masterHeap.heapStart+sizeof(uint32_t)));
-	kernel_printf("Block Allocated: %u\n",*(uint32_t*)(masterHeap.heapStart + 2*sizeof(uint32_t)));
-	char* newChar1 = (char*)malloc(15);
-	char* newChar2 = (char*)malloc(51);
-	char* newChar3 = (char*)malloc(523);
-	free(newChar2);
-	char* newChar4 = (char*)malloc(544);
-	char* newChar5 = (char*)malloc(511111);
-	char* newChar6 = (char*)malloc(50);
-	free(newChar5);
-	char* newChar = (char*)malloc(5);
-	kernel_printf("Block location: %u\n",newChar);
-	newChar[0] = 'H';
-	newChar[1] = 'I';
-	newChar[2] = '!';
-	newChar[3] = '\n';
-	newChar[4] = 0;
-	terminal_writestring(newChar);
+	//now rock the GDT
+	kernel_printf("Initializing and Loading GDT\n");
+	createGDT(kernelMasterRam);
 	
-	//print out some diagnostics
-	kernel_printf("Block size: %u\n",*(uint32_t*)(masterHeap.heapStart));
+	//that "24" tells us that the current GDT is 24 bytes.  This should be nGDTEntries*8,
+	//since each entry is 8 bytes long.  My current GDT has 3 entries.  This is 
+	//kludgy...
+	setGDT(GDT,24);
+	reloadSegments();
 	
-	free(newChar);
-	kernel_printf("Block size: %u\n",*(uint32_t*)(masterHeap.heapStart));
-	kernel_printf("Block Next: %u\n",*(uint32_t*)(masterHeap.heapStart+sizeof(uint32_t)));
-	kernel_printf("Block Allocated: %u\n",*(uint32_t*)(masterHeap.heapStart + 2*sizeof(uint32_t)));
+	kernel_printf("GDT Loaded.  Initializing Kernel Master Record\n");
+	
+	masterRecord kernelMaster;
+	kernelMaster.heapptr = (&masterHeap);
+	kernelMaster.mbootheader = (&mbh);
+	kernelMaster.pciptr = (pciRecord*)kernel_malloc(sizeof(pciRecord));
+	(kernelMaster.pciptr)->nextRecord = 0xFFFFFFFF; //Special value to indicate it's new
+	
+	_PCI_enumerate(kernelMaster.pciptr);
+	_PCI_output(kernelMaster.pciptr);
+	
+	
 	
 	//make sure it worked
 //	kernel_printf("Heap start: %u, Heap size: %u \n",masterHeap.heapStart,masterHeap.heapSize);

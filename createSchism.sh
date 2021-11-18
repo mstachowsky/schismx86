@@ -1,15 +1,26 @@
 #!/bin/bash
 
+#set it so that a failed command exits the script
+set -e
+
 export PREFIX="../opt/cross"
 export PATH="$PREFIX/bin:$PATH"
 
 echo "Cleaning directory"
-rm *.o
-rm schism.iso
+if test -f *.o; then
+	rm *.o
+fi
+if test -f "schism.iso"; then
+	rm schism.iso
+fi
 echo "Done"
 echo "Assembling boot.s"
 i686-elf-as  boot.s -o boot.o
 echo "Done"
+#echo "Assembling memory detector"
+#i686-elf-as detectRAM.s -o do_e820.o
+#echo "Done"
+
 echo "Compiling kernel.c"
 i686-elf-gcc -Iinclude -c kernel.c -o kernel.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 echo "Done"
@@ -25,8 +36,28 @@ echo "Done"
 echo "Compiling PS/2 Library"
 i686-elf-gcc -Iinclude -c include/schismPS2.c -o schismPS2.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 echo "Done"
+echo "Compiling AHCI Library"
+i686-elf-gcc -Iinclude -c include/schismAHCI.c -o schismAHCI.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+echo "Done"
+echo "Compiling Multiboot Library"
+i686-elf-gcc -Iinclude -c include/schismMultiBoot.c -o schismMultiBoot.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+echo "Done"
+echo "Compiling Kernel Utils"
+i686-elf-gcc -Iinclude -c include/kernel_util.c -o kernel_util.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+echo "Done"
+echo "Compiling Standard Library"
+i686-elf-gcc -Iinclude -c include/stdlib.c -o stdlib.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+echo "Done"
+echo "Compiling GDT Library"
+i686-elf-gcc -Iinclude -c include/schismGDT.c -o schismGDT.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+#two steps: First the C, then the asm
+echo "...........Assembling GDT ASM"
+i686-elf-as  setGDTInCPU.s -o setGDTInCPU.o
+echo "...........Assembling CS Reconfigurator"
+i686-elf-as reload_CS_CPU.s -o reload_CS_CPU.o
+echo "Done"
 echo "Linking kernel"
-i686-elf-gcc -T linker.ld -o schism.bin -ffreestanding -O2 -nostdlib *.o -lgcc
+i686-elf-gcc -T linker_updated.ld -o schism.bin -ffreestanding -O2 -nostdlib *.o -lgcc
 echo "Done"
 echo "Moving bin files"
 cp schism.bin iso/boot/schism.bin
@@ -36,4 +67,8 @@ sudo grub-mkrescue -o schism.iso iso
 echo "Done"
 echo "Copying to host"
 cp schism.iso /mnt/c/Users/tienb
+echo "+++++++++++++"
+echo "=============================="
 echo "Done! Schism is ready to go"
+echo "=============================="
+echo "+++++++++++++"

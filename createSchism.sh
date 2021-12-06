@@ -56,6 +56,21 @@ i686-elf-as  setGDTInCPU.s -o setGDTInCPU.o
 echo "...........Assembling CS Reconfigurator"
 i686-elf-as reload_CS_CPU.s -o reload_CS_CPU.o
 echo "Done"
+echo "Compiling Interrupt Library"
+echo "...........Compiling PIC Lib"
+i686-elf-gcc -Iinclude -c include/schism_PIC.c -o schism_PIC.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+echo "............Compiling IDT Lib"
+i686-elf-gcc -Iinclude -c include/schism_IDT.c -o schism_IDT.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+echo "..............Assembling IDT ASM"
+i686-elf-as setIDTInCPU.s -o setIDTInCPU.o
+echo "..............Assembling keyboard ISR"
+i686-elf-as include/keyboardInterrupt.s -o keyboardInterrupt.o
+echo "..............Assembling generic ISR"
+i686-elf-as include/genericInterrupt.s -o genericInterrupt.o
+echo "Done"
+echo "Compiling test library"
+i686-elf-gcc -Iinclude -c include/ISR_Test.c -o ISR_Test.o -std=gnu99 -ffreestanding -mgeneral-regs-only -O2 -Wall -Wextra 
+echo "Done"
 echo "Linking kernel"
 i686-elf-gcc -T linker_updated.ld -o schism.bin -ffreestanding -O2 -nostdlib *.o -lgcc
 echo "Done"

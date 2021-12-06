@@ -15,6 +15,9 @@
 #include "stdlib.h"
 #include "kernel_util.h"
 #include "schismGDT.h"
+#include "schism_PIC.h"
+#include "schism_IDT.h"
+#include "ISR_Test.h"
 
 /* Check if the compiler thinks you are targeting the wrong operating system. */
 #if defined(__linux__)
@@ -48,6 +51,7 @@ void get_cpuData(unsigned int inputCode, unsigned int *eax, unsigned int *ebx, u
 }
 
 
+
 void createCharArrayFromUInt(unsigned int a,char* outChar,int startIndex)
 {
 	char ls = a >> 24;
@@ -77,7 +81,16 @@ int get_cpuModel(unsigned int *eax, unsigned int *ebx, unsigned int *ecx, unsign
 	return *eax;
 }
 
+static inline bool are_interrupts_enabled()
+{
+    unsigned long flags;
+    asm volatile ( "pushf\n\t"
+                   "pop %0"
+                   : "=g"(flags) );
+    return flags & (1 << 9);
+}
 
+int test = 0;
 void kernel_main(void) 
 {
 	/* Initialize terminal interface */
@@ -120,7 +133,51 @@ void kernel_main(void)
 	
 	_PCI_enumerate(kernelMaster.pciptr);
 	_PCI_output(kernelMaster.pciptr);
+	_PS2_CheckDevice();
 	
+	kernel_printf("Go for interrupts? y/n\n");
+	char c = kernel_getch();
+	if(c == 'y')
+	{
+		//set up interrupts?
+		//set up IDT
+		createIDT(256); //why not?
+		c = kernel_getch();
+		//create for me a new IDT Entry
+		kernel_printf("Interrupt handler: %u\n",(uint32_t)&isr_keyboard);
+		//IDT_entry keyboardIDT ={.offset = (uint32_t)&test_interrupt_handler,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};
+		IDT_entry keyboardIDT ={.offset = (uint32_t)&isr_keyboard,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};
+		IDT_entry genericIDT ={.offset = (uint32_t)&isr_generic,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};
+		kernel_printf("Interrupt handler: %u IDT ENtry: %u\n",(uint32_t)&isr_keyboard,keyboardIDT.offset);
+		kernel_printf("Loading IDT \n");
+		c = kernel_getch();
+		for(int i = 0; i < 256; i++)
+			packIDTEntry(genericIDT,i);
+		packIDTEntry(keyboardIDT,1);
+		c = kernel_getch();
+		PIC_standard_setup();
+		c = kernel_getch();
+		//enable the keyboard interrupt
+		IRQ_enable(1);
+		asm("sti");
+		kernel_printf("Are interrupts enabled? %u\n",are_interrupts_enabled());
+	}
+	c = kernel_getch();
+	while(c != ESCAPE_BYTE)
+	{
+		if(c!= 0x00)
+		{
+			if(c!='\n' && c!= BACKSPACE_BYTE)
+				terminal_putchar(c);
+			else if (c == '\n')
+				terminal_handle_newline();
+			else
+				terminal_handle_backspace();
+				
+			kernel_printf("Test: %u\n",test);
+		}
+		c = kernel_getch();
+	}
 	
 	
 	//make sure it worked

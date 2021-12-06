@@ -7,8 +7,23 @@
 #include <stdint.h>
 #include <stdarg.h>
 
+//keyboard support
+#include "schismPS2.h"
+
 //print character info
 #define ZERO_CHAR 48
+#define ESCAPE_BYTE 1
+#define BACKSPACE_BYTE 0x0E
+#define TAB_BYTE 0x0F
+#define ENTER_BYTE 0x1C
+#define LEFT_CONTROL_BYTE 0x1D
+#define LEFT_SHIFT_BYTE 0x2A
+#define LEFT_SHIFT_RELEASED 0xAA
+#define RIGHT_SHIFT_BYTE 0x36
+#define RIGHT_SHIFT_RELEASED 0xB6
+#define LEFT_ALT_BYTE 0x38
+
+
 #define INT_OUTPUT_SIZE 11
 #define TAB_WIDTH 5
 
@@ -45,5 +60,5 @@ void terminal_writeint(int data);
 void terminal_writeuint32(uint32_t data);
 void terminal_handle_newline();
 void kernel_printf(const char* data,...);
-
+char kernel_getch();
 #endif

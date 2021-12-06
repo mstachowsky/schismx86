@@ -35,6 +35,12 @@ uint8_t _PS2_readData() //reads the data byte
 	return _IOPORT_readByte((uint16_t)(PS2_DATA));
 }
 
+bool _PS2_waitForAck()
+{
+	while(_PS2_readByteFromDevice()!=PS2_ACK){}
+	return true;
+}
+
 bool _PS2_selfTest()
 {
 	//now test the PS2 port
@@ -69,15 +75,17 @@ uint32_t _PS2_CheckDevice()
 	
 	//wait for ACK
 	kernel_printf("Waiting for ACK\n");
-	while(_PS2_readByteFromDevice()!=PS2_ACK){}
+	 _PS2_waitForAck();
 	
 	//write identify
 	_PS2_writeByteToDevice(PS2_IDENTIFY);
 	
 	kernel_printf("Waiting for ACK\n");
-	while(_PS2_readByteFromDevice()!=PS2_ACK){}
+	 _PS2_waitForAck();
+	 
 	kernel_printf("Waiting for no ACK\n");
 	while(!_PS2_dataReady()){}
+	
 	uint32_t outData = 0;
 	uint8_t lowByte = _PS2_readByteFromDevice();
 	kernel_printf("Received %d \n",(int)lowByte);
@@ -88,6 +96,11 @@ uint32_t _PS2_CheckDevice()
 		while(!_PS2_dataReady()){}
 		outData |= _PS2_readByteFromDevice() << 8;
 	}
+	
+	//re-enable scanning so that the keyboard can talk to us
+	_PS2_writeByteToDevice(PS2_ENABLE_SCANNING);
+	kernel_printf("Waiting for ACK\n");
+	_PS2_waitForAck();
 	
 	return outData;
 }

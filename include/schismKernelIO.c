@@ -27,9 +27,11 @@ size_t terminal_row;
 size_t terminal_column;
 uint8_t terminal_color;
 uint16_t* terminal_buffer;
+bool isShift;
  
 void terminal_initialize(void) 
 {
+	isShift = false;
 	terminal_row = 0;
 	terminal_column = 0;
 	terminal_color = vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
@@ -222,4 +224,234 @@ void terminal_handle_newline()
 			terminal_buffer[index] = vga_entry(' ', terminal_color);
 		}
 	}
+}
+
+void terminal_handle_backspace()
+{
+	if(terminal_column != 0)
+		terminal_column--;
+	else
+	{
+		if(terminal_row != 0)
+		{
+			terminal_column = VGA_WIDTH-1;
+			terminal_row--;
+		}
+	}
+	//blank it out
+	terminal_putentryat(' ', terminal_color, terminal_column, terminal_row);
+}
+
+//OK, this is actually a GIANT switch statement that looks at the keys and returns them
+//note: the scan code set is Scan Code Set 1, but I do not know if this will change
+char kernel_getch()
+{
+	//this blocks until a byte is read
+	uint8_t lowByte = _PS2_readByteFromDevice();
+	//isShift = true;
+	 //Handling shift is a LOT more difficult than it seems, we are going to ignore it 
+	//for now
+	if((lowByte == LEFT_SHIFT_BYTE || lowByte == RIGHT_SHIFT_BYTE) && !isShift)
+	{
+		isShift = true;
+		return 0;
+	}
+	else if((lowByte == LEFT_SHIFT_BYTE || lowByte == RIGHT_SHIFT_BYTE) && isShift)
+	{
+		//this means that we are holding down shift
+		while(lowByte == LEFT_SHIFT_BYTE || lowByte == RIGHT_SHIFT_BYTE)
+			lowByte = _PS2_readByteFromDevice();
+	}
+	//now wait for another key
+	
+	//now check what it was.  If it is a release code, then we just return 0 - nothing happens
+	if(lowByte == LEFT_SHIFT_RELEASED || lowByte == RIGHT_SHIFT_RELEASED)
+	{
+		isShift = false;
+		return 0;
+	}
+	
+	//OK, it's not a shift release, so it's something else. Handle it
+	char retVal = 0;
+	//yes, now a big, giant lookup table.  I'm using switch statements
+	switch(lowByte)
+	{
+		case 0x00:
+			retVal = 0;
+			break;
+		case 0x01:
+			retVal = ESCAPE_BYTE;
+			break;
+		case 0x02:
+			retVal = isShift ? '!' : '1';
+			break;
+		case 0x03:
+			retVal = isShift ? '@' : '2';
+			break;
+		case 0x04:
+			retVal = isShift ? '#' : '3';
+			break;
+		case 0x05:
+			retVal = isShift ? '$' : '4';
+			break;
+		case 0x06:
+			retVal = isShift ? '%' : '5';
+			break;
+		case 0x07:
+			retVal = isShift ? '^' : '6';
+			break;
+		case 0x08:
+			retVal = isShift ? '&' : '7';
+			break;
+		case 0x09:
+			retVal = isShift ? '*' : '8';
+			break;
+		case 0x0A:
+			retVal = isShift ? '(' : '9';
+			break;
+		case 0x0B:
+			retVal = isShift ? ')' : '0';
+			break;
+		case 0x0C:
+			retVal = isShift ? '_' : '-';
+			break;
+		case 0x0D:
+			retVal = isShift ? '+' : '=';
+			break;
+		case 0x0E:
+			retVal = BACKSPACE_BYTE;
+			break;
+		case 0x0F:
+			retVal = '\t';
+			break;
+		case 0x10:
+			retVal = isShift ? 'Q' : 'q';
+			break;
+		case 0x11:
+			retVal = isShift ? 'W' : 'w';
+			break;
+		case 0x12:
+			retVal = isShift ? 'E' : 'e';
+			break;
+		case 0x13:
+			retVal = isShift? 'R' : 'r';
+			break;
+		case 0x14:
+			retVal = isShift ? 'T' : 't';
+			break;
+		case 0x15:
+			retVal = isShift ? 'Y' : 'y';
+			break;
+		case 0x16:
+			retVal = isShift ? 'U' : 'u';
+			break;
+		case 0x17:
+			retVal = isShift ? 'I' : 'i';
+			break;
+		case 0x18:
+			retVal = isShift ? 'O' : 'o';
+			break;
+		case 0x19:
+			retVal = isShift ? 'P' : 'p';
+			break;
+		case 0x1A:
+			retVal = isShift ? '{' : '[';
+			break;
+		case 0x1B:
+			retVal = isShift ? '}' : ']';
+			break;
+		case 0x1C:
+			retVal = '\n';
+			break;
+		case 0x1D:
+			retVal = LEFT_CONTROL_BYTE;
+			break;
+		case 0x1E:
+			retVal = isShift ? 'A' : 'a' ;
+			break;
+		case 0x1F:
+			retVal = isShift ? 'S' : 's';
+			break;
+		case 0x20:
+			retVal = isShift ? 'D' : 'd';
+			break;
+		case 0x21:
+			retVal = isShift ? 'F' : 'f';
+			break;
+		case 0x22:
+			retVal = isShift ? 'G' : 'g';
+			break;
+		case 0x23:
+			retVal = isShift ? 'H' : 'h';
+			break;
+		case 0x24:
+			retVal = isShift ? 'J' : 'j';
+			break;
+		case 0x25:
+			retVal = isShift ? 'K' : 'k';
+			break;
+		case 0x26:
+			retVal = isShift ? 'L' : 'l';
+			break;
+		case 0x27:
+			retVal = isShift ? ':' : ';';
+			break;
+		case 0x28:
+			retVal = isShift ? '\"' : '\'';
+			break;
+		case 0x29:
+			retVal = isShift ? '~' : '`';
+			break;
+		case 0x2A:
+			retVal = LEFT_SHIFT_BYTE;
+			break;
+		case 0x2B:
+			retVal = isShift ? '|' : '\\';
+			break;
+		case 0x2C:
+			retVal = isShift ? 'Z' : 'z';
+			break;
+		case 0x2D:
+			retVal = isShift ? 'X' : 'x';
+			break;
+		case 0x2E:
+			retVal = isShift ? 'C' : 'c';
+			break;
+		case 0x2F:
+			retVal = isShift ? 'V' : 'v';
+			break;
+		case 0x30:
+			retVal = isShift ? 'B' : 'b';
+			break;
+		case 0x31:
+			retVal = isShift ? 'N' : 'n';
+			break;
+		case 0x32:
+			retVal = isShift ? 'M' : 'm';
+			break;
+		case 0x33:
+			retVal = isShift ? '<' : ',';
+			break;
+		case 0x34:
+			retVal = isShift ? '>' : '.';
+			break;
+		case 0x35:
+			retVal = isShift ? '?' : '/';
+			break;
+		case 0x36:
+			retVal = RIGHT_SHIFT_BYTE;
+			break;
+		case 0x37:
+			retVal = 0x37; //this is a keypad byte, I'm not supporting this atm
+			break;
+		case 0x38:
+			retVal = LEFT_ALT_BYTE;
+			break;
+		case 0x39:
+			retVal = ' ';
+			break;
+		default:
+			retVal = 0x00;
+	}
+	return retVal;
 }

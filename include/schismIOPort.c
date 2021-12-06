@@ -32,7 +32,7 @@ uint32_t _IOPORT_readDWord(uint16_t port)
 	uint32_t inData;
 	
 	//Note that %1 is the address we are sending to.  "Nd" means "send this as bytes,no worries".
-	__asm__ volatile("inl %1, %0":"=a"(inData):"Nd"((port))); 
+	__asm__ volatile("inl %1, %0":"=a"(inData):"Nd"((port)));
 	
 	return inData;
 }

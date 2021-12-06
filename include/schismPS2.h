@@ -22,6 +22,7 @@
 
 //commands for devices
 #define PS2_DISABLE_SCANNING 0xF5
+#define PS2_ENABLE_SCANNING 0xF4
 #define PS2_IDENTIFY 0xF2
 
 //responses
@@ -34,6 +35,7 @@
 void _PS2_writeCommand(uint8_t cmd);
 uint8_t _PS2_readStatus(); //reads the status byte
 uint8_t _PS2_readData(); //reads the data byte
+bool _PS2_waitForAck(); //waits for ACK byte
 
 //control fuctions.  If port1 is true it will test port 1, otherwise it will test port 2
 bool _PS2_selfTest();

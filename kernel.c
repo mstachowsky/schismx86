@@ -135,34 +135,40 @@ void kernel_main(void)
 	_PCI_output(kernelMaster.pciptr);
 	_PS2_CheckDevice();
 	
-	kernel_printf("Go for interrupts? y/n\n");
+
+	kernel_printf("Setting up interrupts\n");
+	createIDT(IDT_NUM_INTERRUPTS); //why not?
+	//create for me a new IDT Entry
+	IDT_entry keyboardIDT ={.offset = (uint32_t)&isr_keyboard,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};
+	IDT_entry genericIDT ={.offset = (uint32_t)&isr_generic,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};
+	
+	kernel_printf("Filling IDT \n");
+	
+	for(int i = 0; i < IDT_NUM_INTERRUPTS; i++)
+		packIDTEntry(genericIDT,i);
+	
+	kernel_printf("Done \n");	
+	
+	kernel_printf("Adding keyboard interrupt\n");
+	packIDTEntry(keyboardIDT,1);
+	
+	kernel_printf("Setting up the PIC:\n");
+	PIC_standard_setup();
+	
+	//enable the keyboard interrupt
+	IRQ_enable(1);
+	
+	//disable the timer interrupt
+	IRQ_disable(0);
+	
+	kernel_printf("Enable interrupts via sti command: \n");
+	asm("sti");
+
+	kernel_printf("Are interrupts enabled? %u\n",are_interrupts_enabled());
+	
+	kernel_printf("Entering main loop: \n");
+	
 	char c = kernel_getch();
-	if(c == 'y')
-	{
-		//set up interrupts?
-		//set up IDT
-		createIDT(256); //why not?
-		c = kernel_getch();
-		//create for me a new IDT Entry
-		kernel_printf("Interrupt handler: %u\n",(uint32_t)&isr_keyboard);
-		//IDT_entry keyboardIDT ={.offset = (uint32_t)&test_interrupt_handler,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};
-		IDT_entry keyboardIDT ={.offset = (uint32_t)&isr_keyboard,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};
-		IDT_entry genericIDT ={.offset = (uint32_t)&isr_generic,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};
-		kernel_printf("Interrupt handler: %u IDT ENtry: %u\n",(uint32_t)&isr_keyboard,keyboardIDT.offset);
-		kernel_printf("Loading IDT \n");
-		c = kernel_getch();
-		for(int i = 0; i < 256; i++)
-			packIDTEntry(genericIDT,i);
-		packIDTEntry(keyboardIDT,1);
-		c = kernel_getch();
-		PIC_standard_setup();
-		c = kernel_getch();
-		//enable the keyboard interrupt
-		IRQ_enable(1);
-		asm("sti");
-		kernel_printf("Are interrupts enabled? %u\n",are_interrupts_enabled());
-	}
-	c = kernel_getch();
 	while(c != ESCAPE_BYTE)
 	{
 		if(c!= 0x00)

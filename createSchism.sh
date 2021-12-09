@@ -68,8 +68,11 @@ i686-elf-as include/keyboardInterrupt.s -o keyboardInterrupt.o
 echo "..............Assembling generic ISR"
 i686-elf-as include/genericInterrupt.s -o genericInterrupt.o
 echo "Done"
-echo "Compiling test library"
+echo "Compiling ISR library"
 i686-elf-gcc -Iinclude -c include/ISR_Test.c -o ISR_Test.o -std=gnu99 -ffreestanding -mgeneral-regs-only -O2 -Wall -Wextra 
+echo "Done"
+echo "Compiling mem explore library"
+i686-elf-gcc -Iinclude -c memExplore/memExplore.c -o memExplore.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 echo "Done"
 echo "Linking kernel"
 i686-elf-gcc -T linker_updated.ld -o schism.bin -ffreestanding -O2 -nostdlib *.o -lgcc

@@ -90,7 +90,58 @@ static inline bool are_interrupts_enabled()
     return flags & (1 << 9);
 }
 
+
+//tests PIO mode: need to get rid of this function and clean it up
+/* on Primary bus: ctrl->base =0x1F0, ctrl->dev_ctl =0x3F6. REG_CYL_LO=4, REG_CYL_HI=5, REG_DEVSEL=6 */
+uint32_t detect_devtype (int slavebit)
+{
+	#define CTRL_BASE 0x1F0
+	#define REG_DEVSEL 6
+	#define DEV_CTL 0x3F6
+	#define REG_CYL_LO 4
+	#define REG_CYL_HI 5
+	//ata_soft_reset(ctrl->dev_ctl);		/* waits until master drive is ready again */
+	_IOPORT_writeByte(CTRL_BASE + REG_DEVSEL, 0xA0 | slavebit<<4);
+	_IOPORT_readDWord(DEV_CTL);			/* wait 400ns for drive select to work */
+	_IOPORT_readDWord(DEV_CTL);
+	_IOPORT_readDWord(DEV_CTL);
+	_IOPORT_readDWord(DEV_CTL);
+
+	_IOPORT_writeByte(CTRL_BASE + 2, 0);
+	_IOPORT_writeByte(CTRL_BASE + 3, 0);
+	_IOPORT_writeByte(CTRL_BASE + 4, 0);
+	_IOPORT_writeByte(CTRL_BASE + 5, 0);
+	
+	//now see if it exists
+	uint32_t stat = 0 + _IOPORT_readByte(CTRL_BASE + 7);
+	if(stat != 0)
+	{
+		//it exists!
+		kernel_printf("A drive exists.  Go you %u\n",stat);
+		//now wait until the drive is ready to talk to us
+		
+		return 0;	
+	}
+	
+	return 1;
+	/*
+	unsigned cl=_IOPORT_readDWord(CTRL_BASE+ REG_CYL_LO);	// get the "signature bytes" 
+	unsigned ch=_IOPORT_readDWord(CTRL_BASE + REG_CYL_HI);
+ 
+	// differentiate ATA, ATAPI, SATA and SATAPI 
+	if (cl==0x14 && ch==0xEB) return 0;//ATADEV_PATAPI;
+	if (cl==0x69 && ch==0x96) return 1;//ATADEV_SATAPI;
+	if (cl==0 && ch == 0) return 2;//ATADEV_PATA;
+	if (cl==0x3c && ch==0xc3) 3;//return ATADEV_SATA;
+	return cl;//ATADEV_UNKNOWN; 
+	*/
+}
+
 int test = 0;
+
+//the master heap record.  It belongs to the kernel
+heapData masterHeap;
+
 void kernel_main(void) 
 {
 	/* Initialize terminal interface */
@@ -129,11 +180,12 @@ void kernel_main(void)
 	kernelMaster.heapptr = (&masterHeap);
 	kernelMaster.mbootheader = (&mbh);
 	kernelMaster.pciptr = (pciRecord*)kernel_malloc(sizeof(pciRecord));
+
 	(kernelMaster.pciptr)->nextRecord = 0xFFFFFFFF; //Special value to indicate it's new
 	
 	_PCI_enumerate(kernelMaster.pciptr);
-	_PCI_output(kernelMaster.pciptr);
-	_PS2_CheckDevice();
+//	_PCI_output(kernelMaster.pciptr);
+//	_PS2_CheckDevice();
 	
 
 	kernel_printf("Setting up interrupts\n");
@@ -144,7 +196,7 @@ void kernel_main(void)
 	
 	kernel_printf("Filling IDT \n");
 	
-	for(int i = 0; i < IDT_NUM_INTERRUPTS; i++)
+	for(int i = 0; i < IDT_NUM_INTERRUPTS - 0x41; i++)
 		packIDTEntry(genericIDT,i);
 	
 	kernel_printf("Done \n");	
@@ -166,9 +218,29 @@ void kernel_main(void)
 
 	kernel_printf("Are interrupts enabled? %u\n",are_interrupts_enabled());
 	
-	kernel_printf("Entering main loop: \n");
+//	kernel_printf("Testing for hard drive. Master: %u\n",detect_devtype(0));
+//	kernel_printf("Testing for hard drive. Slave: %u\n",detect_devtype(1));
 	
-	char c = kernel_getch();
+	//create a bunch of variables to read
+	uint8_t* bt = (uint8_t*)kernel_malloc(5);
+	bt[0] = 123;
+	bt[1] = 253;
+	kernel_printf("Byte at %u, value %u\n",bt,*bt);
+	
+	uint16_t* dwt = (uint16_t*)kernel_malloc(5*sizeof(uint16_t));
+	dwt[0] = 12345;
+	dwt[1] = 2343;
+	kernel_printf("DWord at %u, value %u\n",dwt,*dwt);
+	
+	uint32_t* uit = (uint32_t*)kernel_malloc(101*sizeof(uint32_t));
+	uit[0] = 20002222;
+	uit[56] = 111232;
+	kernel_printf("UINT at %u, value %u\n",uit,*uit);
+	
+	kernel_printf("Entering main loop: \n");
+	memExploreLoop();
+	
+	/*char c = kernel_getch();
 	while(c != ESCAPE_BYTE)
 	{
 		if(c!= 0x00)
@@ -183,7 +255,7 @@ void kernel_main(void)
 			kernel_printf("Test: %u\n",test);
 		}
 		c = kernel_getch();
-	}
+	}*/
 	
 	
 	//make sure it worked

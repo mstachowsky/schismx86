@@ -10,4 +10,7 @@ typedef struct{
 	void* heapStart; //byte addressable for now
 }heapData;
 
+//this is the master heap record. It lives in the kernel
+extern heapData masterHeap;
+
 #endif

@@ -15,8 +15,6 @@
 
 extern uint32_t* heapBottom;
 
-//this is the master heap record
-heapData masterHeap;
 
 //this will search for where the heapBottom is, and then figure out
 //how big the heap is allowed to be

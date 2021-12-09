@@ -31,6 +31,7 @@ void* kernel_malloc(uint32_t size)
 {
 	//begin at the first block
 	uint32_t* block = (uint32_t*)masterHeap.heapStart;
+
 	uint8_t* byteBlock = (uint8_t*)block;
 	bool memFound = false;
 	while(!memFound)
@@ -62,9 +63,10 @@ void* kernel_malloc(uint32_t size)
 				*(block + 1) = (byteBlock+size+3*sizeof(uint32_t));
 				
 			}
+			else
+				block[1] = 0; //no more blocks!
 			
 			//if this block is the exact right size we won't cut it
-			
 			//return the pointer to memory
 			return (void*)(block+3); //return the memory location 3 after the start of this block
 		}

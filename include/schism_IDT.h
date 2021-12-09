@@ -3,6 +3,7 @@
 
 #include "schismKernelIO.h"
 #include "stdlib.h"
+#include "schism_PIC.h"
 
 //definitions
 #define INTERRUPT_GATE 0xE
@@ -11,6 +12,8 @@
 #define IDT_ENTRY_REAL_SIZE 8 //IDT entries need to be properly aligned and are 8 bytes long
 #define NUM_VECTORS 256 //there are 256 possible interrupts and the IDT must be this size?
 #define KERNEL_CODE_SEGMENT 0b1000
+
+#define IDT_NUM_INTERRUPTS 256
 
 //define the IDT entry structure
 

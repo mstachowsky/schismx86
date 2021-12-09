@@ -15,7 +15,7 @@ void createIDT(uint32_t numInterrupts)
 {
 	kernel_printf("Creating IDT\n");
 	//create it
-	IDT = (IDT_entry_packed*)kernel_malloc(IDT_ENTRY_REAL_SIZE*numInterrupts);
+	IDT = (IDT_entry_packed*)kernel_malloc(IDT_ENTRY_REAL_SIZE*(numInterrupts + PIC1_SCHISM_OFFSET));
 	//tell the CPU it exists
 //	setIDT((uint8_t*)IDT,IDT_ENTRY_REAL_SIZE*numInterrupts);
 	lidt(IDT,IDT_ENTRY_REAL_SIZE*numInterrupts);
@@ -27,16 +27,13 @@ void packIDTEntry(IDT_entry entr,uint32_t interruptNum)
 	
 	//figure out where in the IDT we need to be
 	//IDT_entry_packed* idtpacked = IDT + interruptNum * IDT_ENTRY_REAL_SIZE;
-	IDT_entry_packed* idtpacked = &IDT[interruptNum+ 0x40];
+	IDT_entry_packed* idtpacked = &IDT[interruptNum+ PIC1_SCHISM_OFFSET];
 	idtpacked->IDTPacked &= 0; //set it to zero...but deep concern.  Where is it being placed?
 
 	
 	//put in the ISR offset first
 	uint64_t highBytesOffset = entr.offset>>16;
 	uint64_t lowBytesOffset = entr.offset&0b1111111111111111; //sketch but it works
-	
-	kernel_printf("Incoming data: %u %u \n",(uint32_t)highBytesOffset,(uint32_t)lowBytesOffset);
-	
 	
 	//pack them in
 	idtpacked->IDTPacked |= highBytesOffset << 48;
@@ -47,6 +44,5 @@ void packIDTEntry(IDT_entry entr,uint32_t interruptNum)
 	idtpacked->IDTPacked |= ((uint64_t)entr.gate&0b1111)<<40;
 	
 	idtpacked->IDTPacked |= ((uint64_t)entr.selector)<<16;
-	kernel_printf("IDT Entry: %u %u \n", (uint32_t)(idtpacked->IDTPacked >> 32),(uint32_t)(idtpacked->IDTPacked & 0b11111111111111111111111111111111));
 }
 

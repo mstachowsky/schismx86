@@ -16,6 +16,8 @@
 #define PIC1_STANDARD_OFFSET 0x8
 #define PIC2_STANDARD_OFFSET 0x70
 
+#define PIC1_SCHISM_OFFSET 0x40
+
 //Do not define anything for the secondary PIC at this time
 
 //command codes

@@ -7,7 +7,7 @@ extern int test;
 
 void keyboard_event()
 {
-	kernel_printf("A keypress was detected!!\n");
+//	kernel_printf("A keypress was detected!!\n");
 	test++;
 	//terminal_setcolor(VGA_COLOR_WHITE);
 	//PIC_sendEOI(1);

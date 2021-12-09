@@ -61,4 +61,6 @@ void terminal_writeuint32(uint32_t data);
 void terminal_handle_newline();
 void kernel_printf(const char* data,...);
 char kernel_getch();
+void getline(char* line);
+int strcmp(char* str1, char* str2); //returns -1 if str1 < str2, 0 if equal, and 1 if str1 > str2
 #endif

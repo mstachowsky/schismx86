@@ -455,3 +455,52 @@ char kernel_getch()
 	}
 	return retVal;
 }
+
+//we assume that line is big enough
+void getline(char* line)
+{
+	char c = kernel_getch();
+	int count = 0;
+	while(c != '\n')
+	{
+		//not SUPER great to do this here, but it's easier to buffer
+		if(c!= 0x00)
+		{
+			if(c!='\n' && c!= BACKSPACE_BYTE)
+				terminal_putchar(c);
+			else if (c == '\n')
+				terminal_handle_newline();
+			else
+				terminal_handle_backspace();		
+		}
+		if(c == BACKSPACE_BYTE && count > 0)
+			count--;
+		else if (c != 0x00) //the default byte
+		{
+			line[count] = c;
+			count++;
+		}
+		c = kernel_getch();
+	}
+	terminal_handle_newline();
+	line[count] = 0;
+}
+
+int strcmp(char* str1, char* str2)
+{
+	int retval = 0;
+	int count = 0;
+	while(str1[count] != 0 && str2[count] != 0)
+	{
+		if(str1[count] > str2[count])
+			return 1;
+		if(str1[count] < str2[count])
+			return -1;
+		count++;
+	}
+	if(str1[count] == 0 && str2[count] == 0)
+		return 0;
+	if(str1[count] == 0)
+		return -1; //there is more in str2
+	return 1; //there is more in str1
+}

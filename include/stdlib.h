@@ -21,6 +21,7 @@ extern uint32_t* heapBottom;
 void initKernelMalloc(heapData* heap,ramData masterRam,uint32_t heapMaxSize);
 
 void* kernel_malloc(uint32_t size);
+void* kernel_malloc_align(uint32_t size, uint32_t alignment); //an extension to malloc that aligns on boundaries
 void free(void* ptr);
 
 #endif

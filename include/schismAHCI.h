@@ -125,7 +125,7 @@ typedef struct tagFIS_REG_H2D
 
 //Physical region Descriptors
 typedef struct tagPRDT{
-	uint32_t dataBaseAddr;
+	uint8_t* dataBaseAddr;
 	uint32_t dataBaseAddrUpper; //set to zero for 32 bit OS
 	uint32_t reserved;
 	uint32_t descriptionInformation;
@@ -133,7 +133,7 @@ typedef struct tagPRDT{
 
 //Command Header
 typedef struct cmdHead{
-	uint32_t CFL: 4; //Command header length, in DWords. Must be at least 2.
+	uint32_t CFL: 5; //Command header length, in DWords. Must be at least 2.
 	uint32_t ATAPI: 1; //whether or not this is an ATAPI command (1 for yes, 0 for no. HDD is not ATAPI, ODD is)
 	uint32_t RWBit: 1; //when set to 1, this is a device write. When set to 0 it is a device read
 	uint32_t Prefetch: 1; //advanced use, set to 0 for now

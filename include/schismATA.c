@@ -16,9 +16,10 @@ void _ATA_sendID(ahcihba* HBA){
 	
 	//now we need to actually access the two structures stored there
 	uint32_t* cmdListAddr = _AHCI_getPortBaseAddr(prt,*HBA);
-			kernel_printf("And did it stay set: %u\n",*cmdListAddr);
-	uint32_t* receivedFISAddr = _AHCI_getPortBaseAddr(prt,*HBA) + AHCI_PORT_FB;
-	kernel_printf("CmdListdfs Addr: %u\n",(uint32_t)(*cmdListAddr));
+	uint32_t* PXFB = (uint32_t*)(_AHCI_getPortBaseAddr(prt,*HBA)+AHCI_PORT_FB);
+	//		kernel_printf("And did it stay set: %u\n",*cmdListAddr);
+	uint8_t* receivedFISAddr = (uint8_t*)(*PXFB);
+	//kernel_printf("CmdListdfs Addr: %u\n",(uint32_t)(*cmdListAddr));
 	
 	//create the command FIS
 	FIS_REG_H2D fis;
@@ -34,24 +35,39 @@ void _ATA_sendID(ahcihba* HBA){
 	kernel_memclr((uint8_t*)&cmdT,sizeof(cmdTable));
 	//copy the FIS over
 	kernel_memcpy((uint8_t*)&fis,(uint8_t*)&cmdT,sizeof(FIS_REG_H2D));
-		
+	
+	//now create the PRDT
+	cmdT.physicalRegion.dataBaseAddr = (uint8_t*)kernel_malloc_align(0xFFF,4);
+	kernel_memclr((uint8_t*)cmdT.physicalRegion.dataBaseAddr,0xFFF);
+	cmdT.physicalRegion.descriptionInformation = 0;
+	cmdT.physicalRegion.descriptionInformation &= 1<<32; //enable interrupt on completion
+	cmdT.physicalRegion.descriptionInformation += 0xFFF; //set the byte count to the size of the PRDT
+	kernel_printf("Is the cmdT real? %u\n",&cmdT);
+	kernel_printf("Is the PRDT real? %u\n",&cmdT.physicalRegion);
+	kernel_printf("Is the region real? %u\n",cmdT.physicalRegion.dataBaseAddr);
+	
+	//now set the PRDT settings in the command table
+	
 	//now set it up in the command header
 	//cmdHeader *cmdH = (cmdHeader*)cmdListAddr; //This is fast and loose since we know the port currently holds only a single commandd
 	
 	//kernel_memclr((uint8_t*)cmdH,sizeof(cmdHeader));
 	cmdHeader *cmdH = (cmdHeader*)(*cmdListAddr);
-	kernel_printf("CmdHeader Addr: %u\n",(uint32_t)cmdH);
+//	kernel_printf("CmdHeader Addr: %u\n",(uint32_t)cmdH);
 	kernel_memclr((uint8_t*)cmdH,sizeof(cmdHeader));
 	cmdH->clearBusy = 1;
 	cmdH->CFL = sizeof(FIS_REG_H2D)/4; //I think this is right. It's the length in DWORDS, so #bytes/4
 	cmdH->CTBA = (uint32_t)&cmdT;
 	cmdH->RWBit = 1; //it's a write to the device
 	cmdH->PRDTL = 1;
-	kernel_printf("CmdHeader Addr: %u\n",(uint32_t)cmdH);
+	
+	printBytesBinary(4,cmdH);
+	
+//	kernel_printf("CmdHeader Addr: %u\n",(uint32_t)cmdH);
 
-	kernel_printf("CmdList Addr: %u\n",(uint32_t)(*cmdListAddr));
-	kernel_printf("Command Header: ");
-	printBytesBinaryLines(sizeof(cmdHeader),cmdListAddr);
+//	kernel_printf("CmdList Addr: %u\n",(uint32_t)(*cmdListAddr));
+//	kernel_printf("Command Header: ");
+//	printBytesBinaryLines(sizeof(cmdHeader),cmdListAddr);
 	
 //	kernel_printf("Sending the command\n");
 	//I think that does it? Let's issue the command
@@ -62,16 +78,16 @@ void _ATA_sendID(ahcihba* HBA){
 	uint32_t* portSERR = _AHCI_getPortBaseAddr(prt,*HBA) + AHCI_PORT_SERR;
 	uint32_t* portTFD = _AHCI_getPortBaseAddr(prt,*HBA) + AHCI_PORT_TFD;
 	uint32_t* portCMD = _AHCI_getPortBaseAddr(prt,*HBA) + AHCI_PORT_CMD;
-		//set the appropriate bits
-	//	*portCMD |= AHCI_PORT_CMD_FRE; //allow the FIS to be written
-	//	*portCMD |= 1; //set the start bit, telling the HBA to go team
-		
-	//_AHCI_activatePorts(*HBA);
-
-	kernel_printf("\nTFD: %u\n",*portTFD);
-	*portCmdEnable = 1; //this sets command 1
-
-	char c = 0;
+	
+	kernel_printf("Before: \n");
+	printBytesBinaryLines(12,(uint8_t*)cmdT.physicalRegion.dataBaseAddr);
+	
+	
+	*portCmdEnable = 1; //this sets command 1 and tells the HBA to fetch it
+	
+	
+	
+/*	char c = 0;
 	while(c != 'e')
 	{
 		kernel_printf("\n");
@@ -79,11 +95,12 @@ void _ATA_sendID(ahcihba* HBA){
 
 		kernel_printf("CMDEnable: %u",*portCmdEnable);
 		kernel_printf("\nCMD: %u\n",*portCMD);
-		kernel_printf("IS: %u\n",*portIS);
+		kernel_printf("PRDTBC: %u\n",cmdH->PRDTBC);
 		c = kernel_getch();
 				
-	}
+	}*/
 	
-	printBytesBinaryLines(32,receivedFISAddr+0x40);
+	kernel_printf("And after: \n");
+	printBytesBinaryLines(48,(uint8_t*)cmdT.physicalRegion.dataBaseAddr);
 	
 }

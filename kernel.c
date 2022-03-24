@@ -18,6 +18,7 @@
 #include "schism_PIC.h"
 #include "schism_IDT.h"
 #include "ISR_Test.h"
+#include "schismATA.h"
 
 /* Check if the compiler thinks you are targeting the wrong operating system. */
 #if defined(__linux__)
@@ -88,53 +89,6 @@ static inline bool are_interrupts_enabled()
                    "pop %0"
                    : "=g"(flags) );
     return flags & (1 << 9);
-}
-
-
-//tests PIO mode: need to get rid of this function and clean it up
-/* on Primary bus: ctrl->base =0x1F0, ctrl->dev_ctl =0x3F6. REG_CYL_LO=4, REG_CYL_HI=5, REG_DEVSEL=6 */
-uint32_t detect_devtype (int slavebit)
-{
-	#define CTRL_BASE 0x1F0
-	#define REG_DEVSEL 6
-	#define DEV_CTL 0x3F6
-	#define REG_CYL_LO 4
-	#define REG_CYL_HI 5
-	//ata_soft_reset(ctrl->dev_ctl);		/* waits until master drive is ready again */
-	_IOPORT_writeByte(CTRL_BASE + REG_DEVSEL, 0xA0 | slavebit<<4);
-	_IOPORT_readDWord(DEV_CTL);			/* wait 400ns for drive select to work */
-	_IOPORT_readDWord(DEV_CTL);
-	_IOPORT_readDWord(DEV_CTL);
-	_IOPORT_readDWord(DEV_CTL);
-
-	_IOPORT_writeByte(CTRL_BASE + 2, 0);
-	_IOPORT_writeByte(CTRL_BASE + 3, 0);
-	_IOPORT_writeByte(CTRL_BASE + 4, 0);
-	_IOPORT_writeByte(CTRL_BASE + 5, 0);
-	
-	//now see if it exists
-	uint32_t stat = 0 + _IOPORT_readByte(CTRL_BASE + 7);
-	if(stat != 0)
-	{
-		//it exists!
-		kernel_printf("A drive exists.  Go you %u\n",stat);
-		//now wait until the drive is ready to talk to us
-		
-		return 0;	
-	}
-	
-	return 1;
-	/*
-	unsigned cl=_IOPORT_readDWord(CTRL_BASE+ REG_CYL_LO);	// get the "signature bytes" 
-	unsigned ch=_IOPORT_readDWord(CTRL_BASE + REG_CYL_HI);
- 
-	// differentiate ATA, ATAPI, SATA and SATAPI 
-	if (cl==0x14 && ch==0xEB) return 0;//ATADEV_PATAPI;
-	if (cl==0x69 && ch==0x96) return 1;//ATADEV_SATAPI;
-	if (cl==0 && ch == 0) return 2;//ATADEV_PATA;
-	if (cl==0x3c && ch==0xc3) 3;//return ATADEV_SATA;
-	return cl;//ATADEV_UNKNOWN; 
-	*/
 }
 
 int test = 0;
@@ -218,24 +172,32 @@ void kernel_main(void)
 
 	kernel_printf("Are interrupts enabled? %u\n",are_interrupts_enabled());
 	
-//	kernel_printf("Testing for hard drive. Master: %u\n",detect_devtype(0));
-//	kernel_printf("Testing for hard drive. Slave: %u\n",detect_devtype(1));
+	ahcihba hba;
+	//get the correct BDF address
+	_AHCI_getBDF(kernelMaster.pciptr,&hba);
+//	hba.PCIBus = 0;
+//	hba.PCIDevice = 31;
+//	hba.PCIFunction = 2;
 	
-	//create a bunch of variables to read
-	uint8_t* bt = (uint8_t*)kernel_malloc(5);
-	bt[0] = 123;
-	bt[1] = 253;
-	kernel_printf("Byte at %u, value %u\n",bt,*bt);
+	//uint8_t* ahciBaseAddr = (uint8_t*)(_AHCI_getBaseAddress(hba));
+	_AHCI_getBaseAddress(&hba);
+	_AHCI_initDeviceList(&hba);
+	_AHCI_configure(&hba);
 	
-	uint16_t* dwt = (uint16_t*)kernel_malloc(5*sizeof(uint16_t));
-	dwt[0] = 12345;
-	dwt[1] = 2343;
-	kernel_printf("DWord at %u, value %u\n",dwt,*dwt);
+	kernel_printf("AHCI Base Addr: %u\n",hba.baseAddr);
 	
-	uint32_t* uit = (uint32_t*)kernel_malloc(101*sizeof(uint32_t));
-	uit[0] = 20002222;
-	uit[56] = 111232;
-	kernel_printf("UINT at %u, value %u\n",uit,*uit);
+	//HBA diagnostic stuff. Not required unless curious
+/*	kernel_printf("HBA CAP Reg: ");
+	printBytesBinary(4,hba.baseAddr);
+	kernel_printf("\nEnter any key to continue: \n");
+	char dfs = kernel_getch();
+	dfs = kernel_getch();
+	dfs = kernel_getch();
+*/
+//	_AHCI_printDevices(hba);
+	
+	//OK...now let's see if we can initiate a command to the HDD
+	_ATA_sendID(&hba);
 	
 	kernel_printf("Entering main loop: \n");
 	memExploreLoop();

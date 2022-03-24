@@ -63,4 +63,12 @@ void kernel_printf(const char* data,...);
 char kernel_getch();
 void getline(char* line);
 int strcmp(char* str1, char* str2); //returns -1 if str1 < str2, 0 if equal, and 1 if str1 > str2
+
+//Some very useful helper functions
+/*
+	Prints size bytes at location ptr in binary
+*/
+void printBytesBinary(unsigned int size,void* ptr);
+void printDWordAsInt(unsigned int numWords, unsigned int* ptr);
+void printBytesBinaryLines(unsigned int size, void* ptr);
 #endif

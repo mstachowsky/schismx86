@@ -24,4 +24,9 @@ void* kernel_malloc(uint32_t size);
 void* kernel_malloc_align(uint32_t size, uint32_t alignment); //an extension to malloc that aligns on boundaries
 void free(void* ptr);
 
+//copies numBytes from src to dest
+void kernel_memcpy(uint8_t* src, uint8_t* dest, uint32_t numBytes);
+//sets bytes to zero
+void kernel_memclr(uint8_t* loc, uint32_t numBytes);
+
 #endif

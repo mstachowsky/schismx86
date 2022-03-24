@@ -10,6 +10,17 @@ void _AHCI_getBaseAddress(ahcihba* hostBus)
 	hostBus->baseAddr = _PCI_readData();
 }
 
+//reads the PCI registers
+uint32_t _AHCI_readPCIRegisterAtOffset(ahcihba hostBus,uint32_t offset)
+{
+	//this requires us to create the address, send it to PCI, then read from it
+	uint32_t pciAddr = _PCI_makeBusDevFunc(hostBus.PCIBus,hostBus.PCIDevice,hostBus.PCIFunction,offset);
+	
+	_PCI_writeAddr(pciAddr);
+	
+	return _PCI_readData();
+}
+
 uint32_t _AHCI_readControlReg(ahcihba hostBus)
 {
 	//this requires us to create the address, send it to PCI, then read from it
@@ -19,6 +30,33 @@ uint32_t _AHCI_readControlReg(ahcihba hostBus)
 	return _PCI_readData() & 0xFFFF; //read the lower 16 bits only
 }
 
+//This re-enables the ports after the HBA is set up. The HBA has to idle the 
+//ports during its setup, so this is the last thing to do in the HBA setup routine
+void _AHCI_activatePorts(ahcihba hostBus)
+{
+	//get the ports
+	uint32_t numPorts = _AHCI_detectPorts(hostBus);
+	
+	//now look through them and reset them if needed
+	for(int i = 0; i < numPorts; i++)
+	{
+		//get the port's CMD register
+		uint32_t* portCMD = _AHCI_getPortBaseAddr(i,hostBus) + AHCI_PORT_CMD;
+		
+		//set the appropriate bits
+		*portCMD |= AHCI_PORT_CMD_FRE; //allow the FIS to be written
+		*portCMD |= 1; //set the start bit, telling the HBA to go team
+		
+		
+		
+		kernel_printf("Resetting sdfSERR\n");
+		//clear the port error register by writing all 1s and waiting for them to go back to zero
+		uint32_t* portSERR = _AHCI_getPortBaseAddr(i,hostBus) + AHCI_PORT_SERR;
+		*portSERR |= 0xFFFFFFFF;
+		while(*portSERR){}
+		kernel_printf("Port Reset and ready!\n");
+	}
+}
 
 //puts all implemented ports into an idle state before continuing AHCI configuration
 void _AHCI_resetPorts(ahcihba hostBus)
@@ -29,6 +67,9 @@ void _AHCI_resetPorts(ahcihba hostBus)
 	//now look through them and reset them if needed
 	for(int i = 0; i < numPorts; i++)
 	{
+	//	uint32_t* pxserr = (uint32_t)_AHCI_getPortBaseAddr(i,hostBus) + AHCI_PORT_SERR;
+	//	kernel_printf("Port %u serr is %u\n",i,*pxserr);
+		
 		uint32_t* pxcmd = (uint32_t *)((hostBus.baseAddr + AHCI_PORT_REGS_OFFSET + AHCI_PORT_REGS_SIZE*i+ AHCI_PORT_CMD));
 		
 		//read the individual things. If they are nonzero we need to reset them
@@ -41,24 +82,32 @@ void _AHCI_resetPorts(ahcihba hostBus)
 		{
 			//this means that the port is not idle
 			(*pxcmd) &= 0b11111111111111111111111111111110; //clear  the last bit
-			kernel_printf("Clearing port %d. Waiting on CR bit",i);
 			while((*pxcmd)&AHCI_PORT_CMD_CR){}
-			kernel_printf(".......port cleared\n");
 			
 			if((*pxcmd)&AHCI_PORT_CMD_FRE)
 			{
-				kernel_printf("Clearing port %d FRE. Waiting on FR bit.",i);
 			//	kernel_printf("P%dCMD = %u",i,(*pxcmd));
 				(*pxcmd) &= 0b11111111111111111111111111101111; //clear 
 				while((*pxcmd)&AHCI_PORT_CMD_FR){
-				kernel_printf(" P%dCMD = %u\n",i,(*pxcmd));
-				//char c = kernel_getch();
 				}
-				kernel_printf("......FRE cleared\n");
 			}
 		}
 	}
 	
+}
+
+uint8_t* _AHCI_getPortBaseAddr(uint32_t port,ahcihba hostbus)
+{
+	return (uint8_t*)(hostbus.baseAddr + AHCI_PORT_REGS_OFFSET + AHCI_PORT_REGS_SIZE*port);
+}
+
+void _AHCI_BIOS_Handoff(ahcihba hostBus)
+{
+	//Get the Bios Handoff Register
+	uint32_t* bohc = (uint32_t*)(hostBus.baseAddr + 0x24); //the address of the BOHC
+	
+	kernel_printf("What is the BIOS Register? ");
+	printBytesBinary(4,bohc);
 }
 
 //configures the control register to make sure that AHCI is enabled, memory space access is enabled, and that the HBA can control access
@@ -82,14 +131,34 @@ void _AHCI_configure(ahcihba* hba)
 	
 	//OK, so now the HBA is ready on PCI, we need to do stuff to its memory mapped stuff as well
 	
+	//ensure AHCI mode is enabled
 	uint32_t* ghcReg = (uint32_t*)(hostBus.baseAddr + AHCI_GHC); //the address of the GHC
+	
+	//perform the BIOS handoff - Virtualbox doesn't do this, so neither will we!
+	//_AHCI_BIOS_Handoff(hostBus);
 	
 	//set its 32nd bit to 1 - we are doing this even if it's already set by BIOS
 	//this enables the HBA in AHCI mode
-	*ghcReg |= 1<<32; 	
+	*ghcReg |= 1<<32; 
 	
 	//reset the ports so we can do things to the HBA without breaking stuff
+	//NOTE: You have to set the ports back up once you're done HBA stuff
 	_AHCI_resetPorts(hostBus);
+	
+	kernel_printf("Ports reset. Resetting HBA\n");
+	
+	//Reset the HBA and wait for that to work
+	*ghcReg |= 1; //the first bit is the reset
+	//wait for it to be zero
+	while((*ghcReg)&1){}
+	kernel_printf("HBA Reset successful!\n");
+	
+	//set its 32nd bit to 1 - we are doing this even if it's already set by BIOS
+	//this enables the HBA in AHCI mode. We need to do this again because we reset it
+	*ghcReg |= 1<<32; 	
+	
+	//now enable interrupts
+	*ghcReg |= 1<<1;
 	
 	//OK, now we determine how many command slots per port exist by reading the CAP.NCS register
 	//CAP.NCS is bits 8-12 of CAP, which is at offset 0. Add 1 since a value of 
@@ -106,6 +175,10 @@ void _AHCI_configure(ahcihba* hba)
 	}
 	if(curDev!=0) //we've found the HDD
 	{
+		uint32_t* portCmdEnable = _AHCI_getPortBaseAddr(curDev->port,hostBus) + AHCI_PORT_CI;
+		uint32_t* portSACT = _AHCI_getPortBaseAddr(curDev->port,hostBus) + AHCI_PORT_SACT;
+		uint32_t* portCMD = _AHCI_getPortBaseAddr(curDev->port,hostBus) + AHCI_PORT_CMD;
+		
 		//allocate it
 		curDev->received_FIS = kernel_malloc_align(AHCI_RECEIVEDFIS_SIZE,AHCI_RECEIVEDFIS_ALIGNMENT);
 		//Zero out the memory, which is "recommended"
@@ -113,14 +186,40 @@ void _AHCI_configure(ahcihba* hba)
 			*(curDev->received_FIS+i) = 0;
 		
 		//set the pointer in the port CMD register
-		uint8_t* PXFB = (uint8_t *)(hostBus.baseAddr + AHCI_PORT_REGS_OFFSET + AHCI_PORT_REGS_SIZE*curDev->port+ AHCI_PORT_FB);
-		*PXFB = curDev->received_FIS;
+		uint32_t* PXFB = (uint32_t *)(hostBus.baseAddr + AHCI_PORT_REGS_OFFSET + AHCI_PORT_REGS_SIZE*curDev->port + AHCI_PORT_FB);
+		*PXFB = &curDev->received_FIS;
+		
+		//create its command list. We are assuming it has only a single PRDT for now
+		curDev->cmdList = (uint8_t*)kernel_malloc_align(sizeof(cmdHeader),AHCI_CMDLIST_ALIGNMENT);//_AHCI_commandTable_Create(1);
+		kernel_printf("Doesds the command list exist: %u\n",curDev->cmdList);
+		//now set it to be at the right place, which is address zero
+		uint32_t* PXCL = (uint32_t*)(hostBus.baseAddr + AHCI_PORT_REGS_OFFSET + AHCI_PORT_REGS_SIZE*curDev->port);
+		*PXCL = (uint32_t)curDev->cmdList;
+		
+		
+		//Now set the port
+		//set the appropriate bits
+		*portCMD |= AHCI_PORT_CMD_FRE; //allow the FIS to be written
+		while(!((*portCMD)&(AHCI_PORT_CMD_FR))){}
+		
+		*portCMD |= 1; //set the start bit, telling the HBA to go team
+		
+		while(!((*portCMD)&(AHCI_PORT_CMD_CR))){}
+		//clear the port error register by writing all 1s and waiting for them to go back to zero
+		uint32_t* portSERR = _AHCI_getPortBaseAddr(curDev->port,hostBus) + AHCI_PORT_SERR;
+		*portSERR |= 0xFFFFFFFF;
+		while(*portSERR){}
+		kernel_printf("And didadf it get set: %u\n",*PXCL);
 	}
 	else
 	{
 		kernel_printf("Uh...HDD not found...wtf do we do now?\n");
 	}
 	
+	//enable the ports
+//	_AHCI_activatePorts(hostBus);
+	
+
 }
 
 //detects the number of valid ports and returns it
@@ -184,7 +283,7 @@ uint32_t _AHCI_initDeviceList(ahcihba* hostBus)
 				curDev->port = i;
 			}
 			
-			
+			//Now we initialize a lot more about it
 			if(sig == AHCI_DEVICE_HDD)
 			{
 				curDev->type = AHCI_DEVICE_HDD;
@@ -274,4 +373,43 @@ void _AHCI_printDevices(ahcihba hostBus)
 			
 		curDev = curDev->next;
 	}
+}
+
+void _AHCI_commandTable_FillFIS(uint8_t* cmdTable, void* FIS)
+{
+	//get the FIS Type - it's the first byte of the FIS
+	uint8_t FIS_Type = *(uint8_t*)FIS;
+	
+	//now cast the FIS to the right thing
+	if(FIS_Type == FIS_TYPE_REG_H2D)
+	{
+		kernel_memcpy((uint8_t*)FIS,cmdTable,sizeof(FIS_REG_H2D));
+	}
+	else
+	{
+		kernel_printf("That FIS is not implemented yet\n");
+		return; //not implemented yet!
+	}
+}
+
+//this one is just a memcpy
+void _AHCI_commandTable_FillPRDT(uint8_t* cmdTable, PRDT* physicalReg, uint32_t PRDT_Length)
+{
+	kernel_memcpy((uint8_t*)physicalReg,cmdTable+CMD_TABLE_PRDT_START,PRDT_Length*sizeof(PRDT));
+}
+
+//creates the command table, sets it to zero, and returns its address
+uint8_t* _AHCI_commandTable_Create(uint32_t PRDT_Length)
+{
+	//first, compute its size
+	uint32_t cmdTableSize = CMD_TABLE_PRDT_START + PRDT_Length*sizeof(PRDT);
+	
+	//malloc it, aligned on 128 byte boundaries
+	uint8_t* cmdTable = (uint8_t*) kernel_malloc_align(cmdTableSize,CMD_TABLE_MEM_ALIGNMENT);
+	
+	//clear it
+	kernel_memclr(cmdTable,cmdTableSize);
+	
+	//return it
+	return cmdTable;
 }

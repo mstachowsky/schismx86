@@ -87,7 +87,7 @@ void* kernel_malloc(uint32_t size)
 //allocates size bytes on the heap aligned properly
 void* kernel_malloc_align(uint32_t size,uint32_t alignment)
 {
-	kernel_printf("Allocating aligned memory. TODO: There is no FREE for aligned memory!\n");
+//	kernel_printf("Allocating aligned memory. TODO: There is no FREE for aligned memory!\n");
 	//basically, we add alignment to size so ensure we can align:
 	size = size+alignment;
 
@@ -138,7 +138,7 @@ void* kernel_malloc_align(uint32_t size,uint32_t alignment)
 				offset++;
 			}
 			
-			kernel_printf("Memory aligned with %u alignment set to %u\n",alignment,(uint32_t)(byteBlock + 3*sizeof(uint32_t) + offset));
+	//		kernel_printf("Memory aligned with %u alignment set to %u\n",alignment,(uint32_t)(byteBlock + 3*sizeof(uint32_t) + offset));
 			return (void*)(byteBlock+3*sizeof(uint32_t) + offset); //return the memory location 3 after the start of this block
 		}
 		else
@@ -161,5 +161,19 @@ void free(void* ptr)
 	//we just need to set this block to free
 	uint32_t* block = ((uint32_t*)ptr);
 	*(block-1) = FREE_MEMORY; //set to free
+}
+
+//this is an astonishingly useful function for various array-filling tasks
+void kernel_memcpy(uint8_t* src, uint8_t* dest, uint32_t numBytes)
+{
+	for(uint32_t i = 0; i < numBytes; i++)
+		dest[i] = src[i];
+}
+
+//clears memory to zero
+void kernel_memclr(uint8_t* loc, uint32_t numBytes)
+{
+	for(uint32_t i = 0; i < numBytes; i++)
+		loc[i] = 0;
 }
 

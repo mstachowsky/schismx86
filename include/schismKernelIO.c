@@ -504,3 +504,60 @@ int strcmp(char* str1, char* str2)
 		return -1; //there is more in str2
 	return 1; //there is more in str1
 }
+
+/*
+	Prints size bytes at location ptr in binary
+*/
+void printBytesBinary(unsigned int size,void* ptr)
+{
+	unsigned char byte;
+	unsigned char* b = (unsigned char*)ptr;
+	for(int i = size-1; i>=0; i--)
+	{
+		for(int j = 7; j>=0; j--)
+		{
+			byte = (b[i]>>j)&1;
+			if(byte == 0)
+				kernel_printf("0");
+			else
+				kernel_printf("1");
+		}
+		kernel_printf(" ");
+	}
+}
+
+void printBytesBinaryLines(unsigned int size, void* ptr)
+{
+	//prints bytes in binary in multiple lines of 4 bytes (one DWORD)
+	unsigned char byte;
+	unsigned char* b = (unsigned char*)ptr;
+	int nBytesPrinted = 0;
+	kernel_printf("\n");
+	for(int i = size-1; i>=0; i--)
+	{
+		if(nBytesPrinted%4 == 0)
+			kernel_printf("\n");
+		for(int j = 7; j>=0; j--)
+		{
+			byte = (b[i]>>j)&1;
+			if(byte == 0)
+				kernel_printf("0");
+			else
+				kernel_printf("1");
+		}
+		kernel_printf(" ");
+		nBytesPrinted++;
+	}
+	kernel_printf("\n");
+}
+
+/*
+	Prints the numWords dwords starting at ptr
+*/
+void printDWordAsInt(unsigned int numWords, unsigned int* ptr)
+{
+	for(int i = 0; i < numWords; i++)
+	{
+		kernel_printf("%u\n",ptr[i]);
+	}
+}

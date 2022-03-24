@@ -37,7 +37,10 @@ echo "Compiling PS/2 Library"
 i686-elf-gcc -Iinclude -c include/schismPS2.c -o schismPS2.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 echo "Done"
 echo "Compiling AHCI Library"
-i686-elf-gcc -Iinclude -c include/schismAHCI.c -o schismAHCI.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+i686-elf-gcc -Iinclude -c include/schismAHCI.c -o schismAHCI.o -std=gnu99 -ffreestanding -O0 -Wall -Wextra
+echo "Done"
+echo "Compiling ATA Library"
+i686-elf-gcc -Iinclude -c include/schismATA.c -o schismATA.o -std=gnu99 -ffreestanding -O0 -Wall -Wextra
 echo "Done"
 echo "Compiling Multiboot Library"
 i686-elf-gcc -Iinclude -c include/schismMultiBoot.c -o schismMultiBoot.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra

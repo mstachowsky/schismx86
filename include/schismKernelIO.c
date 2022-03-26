@@ -526,6 +526,7 @@ void printBytesBinary(unsigned int size,void* ptr)
 	}
 }
 
+//WARNING: THIS PRINTS EVERYTHING BACKWARDS. DO NOT USE IT UNTIL YOU FIX IT
 void printBytesBinaryLines(unsigned int size, void* ptr)
 {
 	//prints bytes in binary in multiple lines of 4 bytes (one DWORD)

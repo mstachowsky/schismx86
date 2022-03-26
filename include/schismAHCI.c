@@ -166,11 +166,10 @@ void _AHCI_configure(ahcihba* hba)
 	hba->NCS = ((*(uint32_t*)(hostBus.baseAddr)) >> 8) & 0b11111 + 1;
 	
 	//init the harddrive. Note this is a HUGE hack
-	kernel_printf("Initializing Received FIS For HDD. FIX THIS LATER \n");
+	kernel_printf("Initializing Received FIS For HDD\n");
 	ahciDevice* curDev = hostBus.deviceList;
 	while(curDev != 0 && curDev->type != AHCI_DEVICE_HDD)
 	{
-		kernel_printf("Type: %u\n",curDev->type);
 		curDev = curDev->next; //find the last one
 	}
 	if(curDev!=0) //we've found the HDD
@@ -181,7 +180,6 @@ void _AHCI_configure(ahcihba* hba)
 		
 		//allocate it
 		curDev->received_FIS = kernel_malloc_align(AHCI_RECEIVEDFIS_SIZE,AHCI_RECEIVEDFIS_ALIGNMENT);
-		kernel_printf("Is FIS Null yet? %u \n",curDev->received_FIS);
 		//Zero out the memory, which is "recommended"
 		for(int i = 0; i < AHCI_RECEIVEDFIS_SIZE; i++)
 			*(curDev->received_FIS+i) = 0;
@@ -189,11 +187,8 @@ void _AHCI_configure(ahcihba* hba)
 		//set the pointer in the port CMD register
 		uint32_t* PXFB = (uint32_t *)(hostBus.baseAddr + AHCI_PORT_REGS_OFFSET + AHCI_PORT_REGS_SIZE*curDev->port + AHCI_PORT_FB);
 		*PXFB = (uint32_t)curDev->received_FIS;
-		kernel_printf("Is PXFB Real yet? %u \n",PXFB);
-		kernel_printf("What about what it points to %u \n",*PXFB);
 		//create its command list. We are assuming it has only a single PRDT for now
 		curDev->cmdList = (uint8_t*)kernel_malloc_align(sizeof(cmdHeader),AHCI_CMDLIST_ALIGNMENT);//_AHCI_commandTable_Create(1);
-		kernel_printf("Doesds the command list exist: %u\n",curDev->cmdList);
 		//now set it to be at the right place, which is address zero
 		uint32_t* PXCL = (uint32_t*)(hostBus.baseAddr + AHCI_PORT_REGS_OFFSET + AHCI_PORT_REGS_SIZE*curDev->port);
 		*PXCL = (uint32_t)curDev->cmdList;
@@ -211,7 +206,8 @@ void _AHCI_configure(ahcihba* hba)
 		uint32_t* portSERR = _AHCI_getPortBaseAddr(curDev->port,hostBus) + AHCI_PORT_SERR;
 		*portSERR |= 0xFFFFFFFF;
 		while(*portSERR){}
-		kernel_printf("And didadf it get set: %u\n",*PXCL);
+		
+		kernel_printf("HBA and HDD port initialized\n");
 	}
 	else
 	{

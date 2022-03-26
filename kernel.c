@@ -184,7 +184,7 @@ void kernel_main(void)
 	_AHCI_initDeviceList(&hba);
 	_AHCI_configure(&hba);
 	
-	kernel_printf("AHCI Base Addr: %u\n",hba.baseAddr);
+//	kernel_printf("AHCI Base Addr: %u\n",hba.baseAddr);
 	
 	//HBA diagnostic stuff. Not required unless curious
 /*	kernel_printf("HBA CAP Reg: ");
@@ -197,10 +197,26 @@ void kernel_main(void)
 //	_AHCI_printDevices(hba);
 	
 	//OK...now let's see if we can initiate a command to the HDD
-	_ATA_sendID(&hba);
 	
-	kernel_printf("Entering main loop: \n");
-	memExploreLoop();
+	//write it
+	_ATA_sendDataFixed(&hba);
+	
+	//read it
+	_ATA_receivedDataFixed(&hba);
+	
+/*	uint8_t* prdtData = _ATA_sendID(&hba);
+	uint16_t* identData = (uint16_t*)prdtData;
+	
+	kernel_printf("First 32 bytes returned, in binary:\n");
+	printBytesBinaryLines(32,prdtData);
+	kernel_printf("\n");
+	
+	int injd = 256;
+	//kernel_printf("Word at index %u: %u\n",injd,(uint32_t)identData[injd]);
+	kernel_printf("Next five bytes after word 256: \n");
+	printBytesBinaryLines(5,identData[injd+2]);*/
+//	kernel_printf("\nEntering main loop: \n");
+//	memExploreLoop();
 	
 	/*char c = kernel_getch();
 	while(c != ESCAPE_BYTE)

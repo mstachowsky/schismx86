@@ -488,7 +488,6 @@ void getline(char* line)
 
 int strcmp(char* str1, char* str2)
 {
-	int retval = 0;
 	int count = 0;
 	while(str1[count] != 0 && str2[count] != 0)
 	{
@@ -557,7 +556,7 @@ void printBytesBinaryLines(unsigned int size, void* ptr)
 */
 void printDWordAsInt(unsigned int numWords, unsigned int* ptr)
 {
-	for(int i = 0; i < numWords; i++)
+	for(unsigned int i = 0; i < numWords; i++)
 	{
 		kernel_printf("%u\n",ptr[i]);
 	}

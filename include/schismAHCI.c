@@ -7,7 +7,7 @@ void _AHCI_getBaseAddress(ahcihba* hostBus)
 	
 	_PCI_writeAddr(pciAddr);
 	
-	hostBus->baseAddr = _PCI_readData();
+	hostBus->baseAddr = (uint8_t*)_PCI_readData();
 }
 
 //reads the PCI registers
@@ -38,10 +38,10 @@ void _AHCI_activatePorts(ahcihba hostBus)
 	uint32_t numPorts = _AHCI_detectPorts(hostBus);
 	
 	//now look through them and reset them if needed
-	for(int i = 0; i < numPorts; i++)
+	for(unsigned int i = 0; i < numPorts; i++)
 	{
 		//get the port's CMD register
-		uint32_t* portCMD = _AHCI_getPortBaseAddr(i,hostBus) + AHCI_PORT_CMD;
+		uint32_t* portCMD = (uint32_t*)(_AHCI_getPortBaseAddr(i,hostBus) + AHCI_PORT_CMD);
 		
 		//set the appropriate bits
 		*portCMD |= AHCI_PORT_CMD_FRE; //allow the FIS to be written
@@ -51,7 +51,7 @@ void _AHCI_activatePorts(ahcihba hostBus)
 		
 		kernel_printf("Resetting sdfSERR\n");
 		//clear the port error register by writing all 1s and waiting for them to go back to zero
-		uint32_t* portSERR = _AHCI_getPortBaseAddr(i,hostBus) + AHCI_PORT_SERR;
+		uint32_t* portSERR = (uint32_t*)(_AHCI_getPortBaseAddr(i,hostBus) + AHCI_PORT_SERR);
 		*portSERR |= 0xFFFFFFFF;
 		while(*portSERR){}
 		kernel_printf("Port Reset and ready!\n");
@@ -65,7 +65,7 @@ void _AHCI_resetPorts(ahcihba hostBus)
 	uint32_t numPorts = _AHCI_detectPorts(hostBus);
 	
 	//now look through them and reset them if needed
-	for(int i = 0; i < numPorts; i++)
+	for(unsigned int i = 0; i < numPorts; i++)
 	{
 	//	uint32_t* pxserr = (uint32_t)_AHCI_getPortBaseAddr(i,hostBus) + AHCI_PORT_SERR;
 	//	kernel_printf("Port %u serr is %u\n",i,*pxserr);
@@ -139,7 +139,7 @@ void _AHCI_configure(ahcihba* hba)
 	
 	//set its 32nd bit to 1 - we are doing this even if it's already set by BIOS
 	//this enables the HBA in AHCI mode
-	*ghcReg |= 1<<32; 
+	*ghcReg |= 1<<31; 
 	
 	//reset the ports so we can do things to the HBA without breaking stuff
 	//NOTE: You have to set the ports back up once you're done HBA stuff
@@ -155,7 +155,7 @@ void _AHCI_configure(ahcihba* hba)
 	
 	//set its 32nd bit to 1 - we are doing this even if it's already set by BIOS
 	//this enables the HBA in AHCI mode. We need to do this again because we reset it
-	*ghcReg |= 1<<32; 	
+	*ghcReg |= 1<<31; 	
 	
 	//now enable interrupts
 	*ghcReg |= 1<<1;
@@ -163,7 +163,7 @@ void _AHCI_configure(ahcihba* hba)
 	//OK, now we determine how many command slots per port exist by reading the CAP.NCS register
 	//CAP.NCS is bits 8-12 of CAP, which is at offset 0. Add 1 since a value of 
 	//0 means "one is available" and we count up from there.
-	hba->NCS = ((*(uint32_t*)(hostBus.baseAddr)) >> 8) & 0b11111 + 1;
+	hba->NCS = (((*(uint32_t*)(hostBus.baseAddr)) >> 8) & 0b11111) + 1;
 	
 	//init the harddrive. Note this is a HUGE hack
 	kernel_printf("Initializing Received FIS For HDD\n");
@@ -174,9 +174,9 @@ void _AHCI_configure(ahcihba* hba)
 	}
 	if(curDev!=0) //we've found the HDD
 	{
-		uint32_t* portCmdEnable = _AHCI_getPortBaseAddr(curDev->port,hostBus) + AHCI_PORT_CI;
-		uint32_t* portSACT = _AHCI_getPortBaseAddr(curDev->port,hostBus) + AHCI_PORT_SACT;
-		uint32_t* portCMD = _AHCI_getPortBaseAddr(curDev->port,hostBus) + AHCI_PORT_CMD;
+	//	uint32_t* portCmdEnable =(uint32_t*)(_AHCI_getPortBaseAddr(curDev->port,hostBus) + AHCI_PORT_CI);
+	//	uint32_t* portSACT = (uint32_t*)(_AHCI_getPortBaseAddr(curDev->port,hostBus) + AHCI_PORT_SACT);
+		uint32_t* portCMD = (uint32_t*)(_AHCI_getPortBaseAddr(curDev->port,hostBus) + AHCI_PORT_CMD);
 		
 		//allocate it
 		curDev->received_FIS = kernel_malloc_align(AHCI_RECEIVEDFIS_SIZE,AHCI_RECEIVEDFIS_ALIGNMENT);
@@ -203,7 +203,7 @@ void _AHCI_configure(ahcihba* hba)
 		
 		while(!((*portCMD)&(AHCI_PORT_CMD_CR))){}
 		//clear the port error register by writing all 1s and waiting for them to go back to zero
-		uint32_t* portSERR = _AHCI_getPortBaseAddr(curDev->port,hostBus) + AHCI_PORT_SERR;
+		uint32_t* portSERR = (uint32_t*)(_AHCI_getPortBaseAddr(curDev->port,hostBus) + AHCI_PORT_SERR);
 		*portSERR |= 0xFFFFFFFF;
 		while(*portSERR){}
 		
@@ -304,7 +304,7 @@ uint32_t _AHCI_initDeviceList(ahcihba* hostBus)
 bool _AHCI_getBDF(pciRecord* pciBus,ahcihba* hostBus)
 {
 	pciRecord* pciDevice = pciBus;
-	if(pciDevice->nextRecord == UNINITIALIZED_RECORD)
+	if(pciDevice->nextRecord == (pciRecord*)UNINITIALIZED_RECORD)
 	{
 		kernel_printf("PCI bus not initialized!\n");
 		return false;

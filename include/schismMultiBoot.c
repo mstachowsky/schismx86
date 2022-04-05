@@ -16,13 +16,13 @@ void _MB_FillHeader(multiBootHeader* mbh)
 	mbh->boot_device = mbh->headerAddr[3];
 	mbh->cmdline = mbh->headerAddr[4];
 	mbh->mods_count = mbh->headerAddr[5];
-	mbh->mods_addr = mbh->headerAddr[6];
+	mbh->mods_addr = (uint32_t*)mbh->headerAddr[6];
 	mbh->symsLow = mbh->headerAddr[7];
 	mbh->symsMed1 = mbh->headerAddr[8];
 	mbh->symsMed2 = mbh->headerAddr[9];
 	mbh->symsHigh = mbh->headerAddr[10];
 	mbh->mmap_length = mbh->headerAddr[11];
-	mbh->mmap_addr = mbh->headerAddr[12];
+	mbh->mmap_addr = (uint32_t*)mbh->headerAddr[12];
 }
 
 void _MB_printHeader(multiBootHeader mbh)

@@ -1,5 +1,11 @@
 #include "stdlib.h"
 
+/*
+	TODO: There are some conversion issues in malloc that I am 100% avoiding at this time.
+	I know they exist and the compiler throws warnings, but malloc *works* ffs and I'm
+	not going to screw with it until I re-write it into something way, way more efficient.
+*/
+
 void initKernelMalloc(heapData* heap,ramData masterRam,uint32_t heapMaxSize)
 {
 	//this actually isn't SUPER difficult now that kernel_util handles all the memory lookup.
@@ -60,7 +66,7 @@ void* kernel_malloc(uint32_t size)
 				*(uint32_t*)(byteBlock+size+5*sizeof(uint32_t)) = FREE_MEMORY;
 				
 				//point this block to it
-				*(block + 1) = (byteBlock+size+3*sizeof(uint32_t));
+				*(block + 1) = (uint32_t)(byteBlock+size+3*sizeof(uint32_t));
 				
 			}
 			else
@@ -82,6 +88,7 @@ void* kernel_malloc(uint32_t size)
 				return (void*)0; //fail! We are out of memory. 
 		}
 	}
+	return 0; //there is literally NO way for us to get here, but the compiler is complaining if I don't
 }
 
 //allocates size bytes on the heap aligned properly
@@ -153,6 +160,8 @@ void* kernel_malloc_align(uint32_t size,uint32_t alignment)
 				return (void*)0; //fail! We are out of memory. 
 		}
 	}
+	
+	return 0; //there is literally NO way for us to get here, but the compiler is complaining if I don't
 }
 
 

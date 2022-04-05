@@ -34,6 +34,9 @@
 //read/write functions
 void _PS2_writeCommand(uint8_t cmd);
 uint8_t _PS2_readStatus(); //reads the status byte
+uint8_t _PS2_readByteFromDevice(); //reads a byte from the device
+void _PS2_writeByteToDevice(uint8_t cmd); //writes a byte to do the device, used during setup
+bool _PS2_dataReady(); //returns true when there is data ready to be sent
 uint8_t _PS2_readData(); //reads the data byte
 bool _PS2_waitForAck(); //waits for ACK byte
 

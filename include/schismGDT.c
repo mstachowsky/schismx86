@@ -55,7 +55,7 @@ void addGDTEntry(uint32_t entryNumber,gdtEntry source)
 //this function is SUPER kernel specific, so I'm just hard coding the GDT
 void createGDT(ramData usableRam)
 {
-	kernel_printf("Creating the GDT.  Note: Only kernelspace will exist right now\n");
+	kernel_printf("Creating the GDT.  Note: Only kernelspace will exist right now\n Usable RAM is: %u",usableRam);
 	//first, allocate the GDT
 	allocateGDT(SCHISM_GDT_ENTRIES);
 	

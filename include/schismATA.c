@@ -14,9 +14,9 @@ uint8_t* _ATA_sendID(ahcihba* HBA){
 	uint32_t prt = curDev->port;
 	
 	//now we need to actually access the two structures stored there
-	uint32_t* cmdListAddr = _AHCI_getPortBaseAddr(prt,*HBA);
-	uint32_t* PXFB = (uint32_t*)(_AHCI_getPortBaseAddr(prt,*HBA)+AHCI_PORT_FB);
-	uint8_t* receivedFISAddr = (uint8_t*)(*PXFB);
+	uint32_t* cmdListAddr = (uint32_t*)(_AHCI_getPortBaseAddr(prt,*HBA));
+	//uint32_t* PXFB = (uint32_t*)(_AHCI_getPortBaseAddr(prt,*HBA)+AHCI_PORT_FB);
+	//uint8_t* receivedFISAddr = (uint8_t*)(*PXFB);
 	
 	//create the command FIS. For Identify device this is an FIS_REG_H2D
 	FIS_REG_H2D fis;
@@ -37,7 +37,7 @@ uint8_t* _ATA_sendID(ahcihba* HBA){
 	cmdT.physicalRegion.dataBaseAddr = (uint8_t*)kernel_malloc_align(0x800,4);
 	kernel_memclr((uint8_t*)cmdT.physicalRegion.dataBaseAddr,0x800);
 	cmdT.physicalRegion.descriptionInformation = 0;
-	cmdT.physicalRegion.descriptionInformation &= 1<<32; //enable interrupt on completion
+	cmdT.physicalRegion.descriptionInformation &= 1<<31; //enable interrupt on completion
 	cmdT.physicalRegion.descriptionInformation += 0x800; //set the byte count to the size of the PRDT
 	
 	//Now set up the command header
@@ -51,7 +51,7 @@ uint8_t* _ATA_sendID(ahcihba* HBA){
 	
 	//At this point we are ready to issue the command.
 	
-	uint32_t* portCmdEnable = _AHCI_getPortBaseAddr(prt,*HBA) + AHCI_PORT_CI;
+	uint32_t* portCmdEnable = (uint32_t*)(_AHCI_getPortBaseAddr(prt,*HBA) + AHCI_PORT_CI);
 	
 	*portCmdEnable = 1; //this sets command 1 and tells the HBA to fetch it
 	
@@ -75,9 +75,9 @@ void _ATA_sendDataFixed(ahcihba* HBA){
 	uint32_t prt = curDev->port;
 	
 	//now we need to actually access the two structures stored there
-	uint32_t* cmdListAddr = _AHCI_getPortBaseAddr(prt,*HBA);
-	uint32_t* PXFB = (uint32_t*)(_AHCI_getPortBaseAddr(prt,*HBA)+AHCI_PORT_FB);
-	uint8_t* receivedFISAddr = (uint8_t*)(*PXFB);
+	uint32_t* cmdListAddr = (uint32_t*)(_AHCI_getPortBaseAddr(prt,*HBA));
+//	uint32_t* PXFB = (uint32_t*)(_AHCI_getPortBaseAddr(prt,*HBA)+AHCI_PORT_FB);
+	//uint8_t* receivedFISAddr = (uint8_t*)(*PXFB);
 	
 	//create the command FIS. For Identify device this is an FIS_REG_H2D
 	FIS_REG_H2D fis;
@@ -114,7 +114,7 @@ void _ATA_sendDataFixed(ahcihba* HBA){
 	
 	
 	cmdT.physicalRegion.descriptionInformation = 0;
-	cmdT.physicalRegion.descriptionInformation &= 1<<32; //enable interrupt on completion
+	cmdT.physicalRegion.descriptionInformation &= 1<<31; //enable interrupt on completion
 	cmdT.physicalRegion.descriptionInformation += 0x800; //set the byte count to the size of the PRDT
 	
 	//Now set up the command header
@@ -128,7 +128,7 @@ void _ATA_sendDataFixed(ahcihba* HBA){
 	
 	//At this point we are ready to issue the command.
 	
-	uint32_t* portCmdEnable = _AHCI_getPortBaseAddr(prt,*HBA) + AHCI_PORT_CI;
+	uint32_t* portCmdEnable = (uint32_t*)(_AHCI_getPortBaseAddr(prt,*HBA) + AHCI_PORT_CI);
 	
 	*portCmdEnable = 1; //this sets command 1 and tells the HBA to fetch it
 	
@@ -152,9 +152,9 @@ void _ATA_receivedDataFixed(ahcihba* HBA){
 	uint32_t prt = curDev->port;
 	
 	//now we need to actually access the two structures stored there
-	uint32_t* cmdListAddr = _AHCI_getPortBaseAddr(prt,*HBA);
-	uint32_t* PXFB = (uint32_t*)(_AHCI_getPortBaseAddr(prt,*HBA)+AHCI_PORT_FB);
-	uint8_t* receivedFISAddr = (uint8_t*)(*PXFB);
+	uint32_t* cmdListAddr = (uint32_t*)(_AHCI_getPortBaseAddr(prt,*HBA));
+//	uint32_t* PXFB = (uint32_t*)(_AHCI_getPortBaseAddr(prt,*HBA)+AHCI_PORT_FB);
+//	uint8_t* receivedFISAddr = (uint8_t*)(*PXFB);
 	
 	//create the command FIS. For Identify device this is an FIS_REG_H2D
 	FIS_REG_H2D fis;
@@ -181,7 +181,7 @@ void _ATA_receivedDataFixed(ahcihba* HBA){
 	
 	
 	cmdT.physicalRegion.descriptionInformation = 0;
-	cmdT.physicalRegion.descriptionInformation &= 1<<32; //enable interrupt on completion
+	cmdT.physicalRegion.descriptionInformation &= 1<<31; //enable interrupt on completion
 	cmdT.physicalRegion.descriptionInformation += 0x800; //set the byte count to the size of the PRDT
 	
 	//Now set up the command header
@@ -195,7 +195,7 @@ void _ATA_receivedDataFixed(ahcihba* HBA){
 	
 	//At this point we are ready to issue the command.
 	
-	uint32_t* portCmdEnable = _AHCI_getPortBaseAddr(prt,*HBA) + AHCI_PORT_CI;
+	uint32_t* portCmdEnable = (uint32_t*)(_AHCI_getPortBaseAddr(prt,*HBA) + AHCI_PORT_CI);
 	
 	*portCmdEnable = 1; //this sets command 1 and tells the HBA to fetch it
 	

@@ -6,6 +6,7 @@
 #include "schismIOPort.h"
 #include "kernel_util_defs.h"
 #include "schismPCI_defs.h"
+#include "stdlib.h"
 
 //this function writes to the PCI port's PCI_ADDR
 void _PCI_writeAddr(uint32_t address);

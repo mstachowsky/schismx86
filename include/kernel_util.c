@@ -1,5 +1,4 @@
 #include "kernel_util.h"
-
 //this function finds the start address and size of usable RAM.  It will come in VERY handy
 void initRamData(multiBootHeader mbh,ramData* masterRam)
 {
@@ -64,4 +63,20 @@ void initRamData(multiBootHeader mbh,ramData* masterRam)
 	}
 	
 	return; //theoretically we can never get here...
+}
+
+void systemCall(int sysCallNo,void* ptr)
+{
+	//we need to put the input arguments into registers so they are accessible via
+	//the system call
+	__asm__ volatile("MOV %0, %%EAX" :: "" (sysCallNo));
+	__asm__ volatile("MOV %0, %%ECX" :: "" (ptr));
+	__asm__ volatile ("INT $0xC0"); //call interrupt 0x80
+}
+
+void sysCallC(int sysCallNo,void*ptr)
+{
+	//Now we can write in pure C. Thankfully no more assembly is required to handle the
+	//system calls
+	kernel_printf("I got called! %u %u\n",sysCallNo,*(uint32_t*)ptr);
 }

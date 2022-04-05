@@ -11,6 +11,8 @@
 
 #define UNINITIALIZED_RECORD 0xFFFFFFFF //uninitialized data
 
+#define SYS_CALL_OFFSET 0x80 //the system call offset in the IDT
+
 //The entire purpose of this is to create a set of utilities that the kernel can share
 //with other things.  For instance, it will include the size and location of usable RAM...
 //It will be expanded as time goes on

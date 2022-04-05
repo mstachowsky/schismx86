@@ -51,7 +51,7 @@ pciRecord* _PCI_findLastEntry(pciRecord* pciBus)
 {
 	pciRecord* pciDevice = pciBus;
 	//if this is an uninitialized bus, just return it
-	if(pciDevice->nextRecord == UNINITIALIZED_RECORD)
+	if(pciDevice->nextRecord == (pciRecord*)UNINITIALIZED_RECORD)
 		return pciBus;
 	while(pciDevice->nextRecord != 0)
 	{
@@ -85,13 +85,13 @@ void _PCI_enumerate(pciRecord* pciBus)
 				_PCI_writeAddr((uint32_t)pciAddr);
 				uint32_t outData = _PCI_readData();
 				uint32_t vendorID = outData & PCI_LOW_WORD; //only want lower bytes
-				uint32_t deviceID = (outData >> PCI_HIGH_WORD);
-				if(vendorID != PCI_NO_DEVICE)
+				//uint32_t deviceID = (outData >> PCI_HIGH_WORD);
+				if(vendorID != (PCI_NO_DEVICE))
 				{
 					//we found one! So now we want its data.  Make a new one and link it in
 					pciDevice = _PCI_findLastEntry(pciBus);
 					pciRecord* curDevice;
-					if(pciDevice->nextRecord != UNINITIALIZED_RECORD)
+					if(pciDevice->nextRecord != (pciRecord*)UNINITIALIZED_RECORD)
 					{
 						pciDevice->nextRecord = (pciRecord*)kernel_malloc(sizeof(pciRecord));
 						curDevice = pciDevice->nextRecord;
@@ -133,7 +133,7 @@ void _PCI_enumerate(pciRecord* pciBus)
 void _PCI_output(pciRecord* pciBus)
 {
 	pciRecord* pciDevice = pciBus;
-	if(pciDevice->nextRecord == UNINITIALIZED_RECORD)
+	if(pciDevice->nextRecord == (pciRecord*)UNINITIALIZED_RECORD)
 		kernel_printf("PCI bus not initialized!\n");
 	else
 	{

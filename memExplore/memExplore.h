@@ -2,6 +2,7 @@
 #define MEMEXPLORE
 
 #include "../include/schismKernelIO.h"
+#include "../include/stdlib.h"
 //#include "../include/stdlib.h"
 #include <stddef.h>
 #include <stdint.h>

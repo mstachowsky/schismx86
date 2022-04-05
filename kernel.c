@@ -105,8 +105,41 @@ void kernel_main(void)
 	
 	//obtain the multiboot header
 	multiBootHeader mbh;
-	_MB_setFlagsAndAddr(multibootHeaderLocation, &mbh);
+	
+	//the cast below is to avoid the problem of discarded qualifiers - multibootHeaderLocation is
+	//listed as volatile because it is modified by the bootloader, but the function asks for non-volatile stuff
+	_MB_setFlagsAndAddr((uint32_t*)multibootHeaderLocation, &mbh);
+	
 	_MB_FillHeader(&mbh);
+	
+	
+	//check on the multiboot modules
+	
+	/*
+		OK, so here's the deal: Multiboot modules are just sets of bytes, so we can
+		in theory create programs on Linux, copy them byte-for-byte, and run them.
+		
+		This is good. The code to access it is a bit weird: mbh.mods_addr contains the
+		address of the modules. It is, once again, a pointer-to-a-pointer. It points, I think,
+		to the first module's starting byte once you dereference it. So mods_addr actualy points to the address the 
+		holds the first modules starting byte. Anyway, see below. When that code runs the initrd is printed.
+		
+		Now the problem: Modules have to be loaded before you screw with RAM, or you need to figure out a place
+		to put them. Either way you can't overwrite the data even using your malloc until
+		you've loaded all the modules off. This is a chicken-and-egg: malloc is used to discover the HDD, which
+		will eventually store the modules. 
+		
+		Ah, an option presents itself: We know where RAM ends (well, multiboot does and we can figure it out from
+		initRamData). We also know how big the modules are AND where the heap starts and how big it is. Since the kernel heap is 
+		temporary anyway, we can just make a pointer that is far enough away from the heap but not too close to ramEnd, 
+		copy the bytes over, allocate the heap and keep the modules in their own structure, process the modules, then 
+		we can overwrite them all we want.
+	*/
+	int modsCount = mbh.mods_count;
+	uint32_t* modsAddr = mbh.mods_addr;
+	
+	kernel_printf("Mods count: %u at address %u\n",modsCount,*(uint32_t*)modsAddr);
+	terminal_writestring((char*)(*(modsAddr)));
 	
 	//Get ready for RAM data
 	initRamData(mbh,&kernelMasterRam);
@@ -135,7 +168,7 @@ void kernel_main(void)
 	kernelMaster.mbootheader = (&mbh);
 	kernelMaster.pciptr = (pciRecord*)kernel_malloc(sizeof(pciRecord));
 
-	(kernelMaster.pciptr)->nextRecord = 0xFFFFFFFF; //Special value to indicate it's new
+	(kernelMaster.pciptr)->nextRecord = (pciRecord*)0xFFFFFFFF; //Special value to indicate it's new
 	
 	_PCI_enumerate(kernelMaster.pciptr);
 //	_PCI_output(kernelMaster.pciptr);
@@ -147,16 +180,22 @@ void kernel_main(void)
 	//create for me a new IDT Entry
 	IDT_entry keyboardIDT ={.offset = (uint32_t)&isr_keyboard,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};
 	IDT_entry genericIDT ={.offset = (uint32_t)&isr_generic,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};
-	
+	IDT_entry sysCallIDT ={.offset = (uint32_t)&sysCallHandler,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};	
+
 	kernel_printf("Filling IDT \n");
 	
 	for(int i = 0; i < IDT_NUM_INTERRUPTS - 0x41; i++)
 		packIDTEntry(genericIDT,i);
 	
+	
+	
 	kernel_printf("Done \n");	
 	
 	kernel_printf("Adding keyboard interrupt\n");
 	packIDTEntry(keyboardIDT,1);
+	
+	kernel_printf("Adding system call interrupt\n");
+	packIDTEntry(sysCallIDT,SYS_CALL_OFFSET); //Note that this will be placed at SYS_CALL_OFFSET+PIC1_SCHISM_OFFSET
 	
 	kernel_printf("Setting up the PIC:\n");
 	PIC_standard_setup();
@@ -171,6 +210,12 @@ void kernel_main(void)
 	asm("sti");
 
 	kernel_printf("Are interrupts enabled? %u\n",are_interrupts_enabled());
+	
+	//Um...try to do a system call?
+	int* random = kernel_malloc(sizeof(int));
+	*random = 39;
+	kernel_printf("Random is: %u\n",random);
+	systemCall(54345,(void*)random);
 	
 	ahcihba hba;
 	//get the correct BDF address
@@ -199,10 +244,11 @@ void kernel_main(void)
 	//OK...now let's see if we can initiate a command to the HDD
 	
 	//write it
-	_ATA_sendDataFixed(&hba);
+//	_ATA_sendDataFixed(&hba);
 	
 	//read it
-	_ATA_receivedDataFixed(&hba);
+//	_ATA_receivedDataFixed(&hba);
+	
 	
 /*	uint8_t* prdtData = _ATA_sendID(&hba);
 	uint16_t* identData = (uint16_t*)prdtData;

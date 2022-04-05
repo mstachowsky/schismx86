@@ -71,6 +71,9 @@ i686-elf-as include/keyboardInterrupt.s -o keyboardInterrupt.o
 echo "..............Assembling generic ISR"
 i686-elf-as include/genericInterrupt.s -o genericInterrupt.o
 echo "Done"
+echo ".............Assembling system call"
+i686-elf-as include/sysCallInterrupt.s -o sysCallInterrupt.o
+echo "Done"
 echo "Compiling ISR library"
 i686-elf-gcc -Iinclude -c include/ISR_Test.c -o ISR_Test.o -std=gnu99 -ffreestanding -mgeneral-regs-only -O2 -Wall -Wextra 
 echo "Done"

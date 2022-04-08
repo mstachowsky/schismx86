@@ -20,6 +20,10 @@
 #include "ISR_Test.h"
 #include "schismATA.h"
 
+//various standard-library system interfaces
+#include "fcntl.h"
+#include "_stdio.h"
+
 /* Check if the compiler thinks you are targeting the wrong operating system. */
 #if defined(__linux__)
 #error "You are not using a cross-compiler, you will most certainly run into trouble"
@@ -95,6 +99,14 @@ int test = 0;
 
 //the master heap record.  It belongs to the kernel
 heapData masterHeap;
+
+//the kernel's virtual file system
+virtualFileSystem* kernel_vfs;
+
+//kernel's three streams
+FILE* kstdin;
+FILE* kstdout;
+FILE* kstderr;
 
 void kernel_main(void) 
 {
@@ -370,6 +382,18 @@ void kernel_main(void)
 		}
 	}
 */	
+
+	kernel_printf("Creating the standard three streams.\n Currently they are: out %u, in %u, err %u\n",kstdout,kstdin,kstderr);
+	kstdin = fopen("kstdin","rw");
+	kstdout = fopen("kstdout","rw");
+	kstderr = fopen("kstderr","rw");
+
+	kernel_printf("And now they are: out %u, in %u, err %u\n",kstdout,kstdin,kstderr);
+	
+	putchar('A');
+	putchar('B');
+	
+
 	kernel_printf("Done.  Schism Ended.");	
 
 }

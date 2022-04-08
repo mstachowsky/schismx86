@@ -22,7 +22,7 @@ echo "Done"
 #echo "Done"
 
 echo "Compiling kernel.c"
-i686-elf-gcc -Iinclude -c kernel.c -o kernel.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+i686-elf-gcc -Iinclude -Isys -Ischismlibc -c kernel.c -o kernel.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 echo "Done"
 echo "Compiling IOPort Library"
 i686-elf-gcc -Iinclude -c include/schismIOPort.c -o schismIOPort.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
@@ -46,13 +46,13 @@ echo "Compiling Multiboot Library"
 i686-elf-gcc -Iinclude -c include/schismMultiBoot.c -o schismMultiBoot.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 echo "Done"
 echo "Compiling Kernel Utils"
-i686-elf-gcc -Iinclude -c include/kernel_util.c -o kernel_util.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+i686-elf-gcc -Iinclude -Isys -Ischismlibc -c include/kernel_util.c -o kernel_util.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 echo "Done"
 echo "Compiling Standard Library"
 i686-elf-gcc -Iinclude -c include/stdlib.c -o stdlib.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 echo "Done"
 echo "Compiling GDT Library"
-i686-elf-gcc -Iinclude -c include/schismGDT.c -o schismGDT.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+i686-elf-gcc -Iinclude -Isys -Ischismlibc -c include/schismGDT.c -o schismGDT.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 #two steps: First the C, then the asm
 echo "...........Assembling GDT ASM"
 i686-elf-as  setGDTInCPU.s -o setGDTInCPU.o
@@ -79,6 +79,12 @@ i686-elf-gcc -Iinclude -c include/ISR_Test.c -o ISR_Test.o -std=gnu99 -ffreestan
 echo "Done"
 echo "Compiling mem explore library"
 i686-elf-gcc -Iinclude -c memExplore/memExplore.c -o memExplore.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+echo "Done"
+echo "Compiling stdio"
+i686-elf-gcc -Iinclude -Isys -Ischismlibc -c schismlibc/_stdio.c -o stdio.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+echo "Done"
+echo "Compiling fcntl"
+i686-elf-gcc -Iinclude -Isys -Ischismlibc -c sys/fcntl.c -o fcntl.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 echo "Done"
 echo "Linking kernel"
 i686-elf-gcc -T linker_updated.ld -o schism.bin -ffreestanding -O2 -nostdlib *.o -lgcc

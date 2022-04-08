@@ -65,6 +65,7 @@ void initRamData(multiBootHeader mbh,ramData* masterRam)
 	return; //theoretically we can never get here...
 }
 
+/*
 void systemCall(int sysCallNo,void* ptr)
 {
 	//we need to put the input arguments into registers so they are accessible via
@@ -73,10 +74,31 @@ void systemCall(int sysCallNo,void* ptr)
 	__asm__ volatile("MOV %0, %%ECX" :: "" (ptr));
 	__asm__ volatile ("INT $0xC0"); //call interrupt 0x80
 }
+*/
+void systemCall( int sysCallNo, void * ptr )
+{
+	//we need to put the input arguments into registers so they are accessible via
+	//the system call. the "a" puts sysCallNo into EAX and "c" puts ptr into ECX.
+	//the "memory" thing means that "This instruction may overwrite (clobber) stuff
+	//in registers, so do not cache any memory stuff in the registers until we are done"
+	//it's an instruction to the compiler itself to not use the registers until we are done
+    asm volatile( "int $0xc0" :: "a"(sysCallNo), "c"(ptr) : "memory" );
+}
+
+//print whatever is at the file position of ptr, then decrement the pointer and end
+void syscall_putchar(FILE* ptr)
+{
+	terminal_putchar((ptr->buf)[ptr->filePos-1]);
+	ptr->filePos -= 1; //decrement
+}
 
 void sysCallC(int sysCallNo,void*ptr)
 {
 	//Now we can write in pure C. Thankfully no more assembly is required to handle the
-	//system calls
-	kernel_printf("I got called! %u %u\n",sysCallNo,*(uint32_t*)ptr);
+	//system calls. What follows is a giant if statement that calls various system call functions
+	
+	if(sysCallNo == OPEN_CALL) //it's a call to open in fcntl.h
+		open(ptr);
+	else if(sysCallNo == PUTC_CALL) //it's a call to terminal_putchar eventually
+		syscall_putchar((FILE*)ptr);
 }

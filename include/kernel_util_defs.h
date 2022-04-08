@@ -13,6 +13,13 @@
 
 #define SYS_CALL_OFFSET 0x80 //the system call offset in the IDT
 
+//system call numbers
+#define OPEN_CALL 0 //I'm sure these can be changed later, or ignored.
+#define PUTC_CALL 1 //why not
+
+//io stuff
+#define FOPEN_MAX 1024
+
 //The entire purpose of this is to create a set of utilities that the kernel can share
 //with other things.  For instance, it will include the size and location of usable RAM...
 //It will be expanded as time goes on

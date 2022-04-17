@@ -27,7 +27,7 @@ void packIDTEntry(IDT_entry entr,uint32_t interruptNum)
 	
 	//figure out where in the IDT we need to be
 	//IDT_entry_packed* idtpacked = IDT + interruptNum * IDT_ENTRY_REAL_SIZE;
-	IDT_entry_packed* idtpacked = &IDT[interruptNum+ PIC1_SCHISM_OFFSET];
+	IDT_entry_packed* idtpacked = &IDT[interruptNum + PIC1_SCHISM_OFFSET];
 	idtpacked->IDTPacked &= 0; //set it to zero...but deep concern.  Where is it being placed?
 
 	

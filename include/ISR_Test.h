@@ -2,7 +2,10 @@
 #define ISR_TEST
 #include "schismKernelIO.h"
 #include "schism_PIC.h"
+#include "_stdio.h"
 
+#define NO_DEV 0
+#define DEV_ATTACHED 1
 
 struct interrupt_frame {
     uint32_t ip;
@@ -11,9 +14,11 @@ struct interrupt_frame {
     uint32_t sp;
     uint32_t ss;
 } __attribute__((packed));
+
+typedef struct kbrd{
+	FILE* dev;
+	int avail; //the user level IO library modifies this via a system call
+}keyboard;
  
 void keyboard_event();
-//void generic_event();
-//__attribute__((interrupt)) void test_interrupt_handler(struct interrupt_frame* frame);
-//void test_interrupt_handler();
 #endif

@@ -16,6 +16,7 @@
 //system call numbers
 #define OPEN_CALL 0 //I'm sure these can be changed later, or ignored.
 #define PUTC_CALL 1 //why not
+#define GETCHAR_CALL 2
 
 //io stuff
 #define FOPEN_MAX 1024

@@ -92,6 +92,12 @@ void syscall_putchar(FILE* ptr)
 	ptr->filePos -= 1; //decrement
 }
 
+//get a character
+void syscall_getchar(FILE* ptr)
+{
+	ptr->buf[ptr->filePos] = kernel_getch();
+}
+
 void sysCallC(int sysCallNo,void*ptr)
 {
 	//Now we can write in pure C. Thankfully no more assembly is required to handle the
@@ -101,4 +107,6 @@ void sysCallC(int sysCallNo,void*ptr)
 		open(ptr);
 	else if(sysCallNo == PUTC_CALL) //it's a call to terminal_putchar eventually
 		syscall_putchar((FILE*)ptr);
+	else if(sysCallNo == GETCHAR_CALL) //we are trying to get the char
+		syscall_getchar((FILE*)ptr);
 }

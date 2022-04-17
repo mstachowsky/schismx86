@@ -28,7 +28,9 @@ FILE* fopen(const char* fname, const char* mode);
 //puts a single character into the buffer, if possible
 int fputc ( int character, FILE * stream );
 int putchar(int character); //put a single character into stdout and print, if possible
+int fgetc(FILE* stream); //get a single character from the stream
 
 extern FILE* kstdout;
+extern FILE* kstdin;
 
 #endif

@@ -108,6 +108,9 @@ FILE* kstdin;
 FILE* kstdout;
 FILE* kstderr;
 
+//standard devices
+keyboard curInputDev;
+
 void kernel_main(void) 
 {
 	/* Initialize terminal interface */
@@ -184,7 +187,7 @@ void kernel_main(void)
 	
 	_PCI_enumerate(kernelMaster.pciptr);
 //	_PCI_output(kernelMaster.pciptr);
-//	_PS2_CheckDevice();
+	_PS2_CheckDevice();
 	
 
 	kernel_printf("Setting up interrupts\n");
@@ -222,12 +225,6 @@ void kernel_main(void)
 	asm("sti");
 
 	kernel_printf("Are interrupts enabled? %u\n",are_interrupts_enabled());
-	
-	//Um...try to do a system call?
-	int* random = kernel_malloc(sizeof(int));
-	*random = 39;
-	kernel_printf("Random is: %u\n",random);
-	systemCall(54345,(void*)random);
 	
 	ahcihba hba;
 	//get the correct BDF address
@@ -392,7 +389,17 @@ void kernel_main(void)
 	
 	putchar('A');
 	putchar('B');
+
+	//attach the current input device
+	curInputDev.dev = kstdin;
+	curInputDev.avail = 0;
 	
+	kernel_printf("Time to getch!: ");
+	char c = getchar();
+	
+	kernel_printf("Got: ");
+	terminal_putchar(c);
+	kernel_printf("\n");
 
 	kernel_printf("Done.  Schism Ended.");	
 

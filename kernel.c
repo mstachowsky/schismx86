@@ -24,6 +24,9 @@
 #include "fcntl.h"
 #include "_stdio.h"
 
+//program loader
+#include "extractElf.h"
+
 /* Check if the compiler thinks you are targeting the wrong operating system. */
 #if defined(__linux__)
 #error "You are not using a cross-compiler, you will most certainly run into trouble"
@@ -154,16 +157,32 @@ void kernel_main(void)
 	uint32_t* modsAddr = mbh.mods_addr;
 	
 	kernel_printf("Mods count: %u at address %u\n",modsCount,*(uint32_t*)modsAddr);
-	terminal_writestring((char*)(*(modsAddr)));
+	
+	/*
+		OK, so the problem now is that I need to move the program I have loaded as initrd. In general this won't really be needed
+		since we are just loading these things for now and I need to put them somewhere, I"m just going to memcpy the
+		binary. However, I need to know how big it is first, so hopefully I can do all of that without resorting to the heap
+	*/
+	Elf32_Ehdr executable;
+	uint8_t* elfFile = (uint8_t*)(*modsAddr);
+	//read the header
+	readHeader(elfFile,&executable);
+	
+	//OK, so now we know where it is...why don't we just move it over right now?
+	uint8_t* progLoc = (uint8_t*) 16777216; //TOTAL magic number right now, this will be generalized later
+	
+	//create the header table
+	Elf32_Shdr* headerTab = getSectionHeaders(elfFile,executable);
+	createFlatBinaryAtLocation(elfFile,headerTab,executable,progLoc);
+	
+	//should be loaded, let's check
+	uint32_t prn = progLoc[4];
+	kernel_printf("Entry address: %u",executable.e_entry);
 	
 	//Get ready for RAM data
 	initRamData(mbh,&kernelMasterRam);
 	
-	//did it work?
-	kernel_printf("Ram found. Ram start: %u, Ram size (B): %u \n",kernelMasterRam.ramStart, kernelMasterRam.ramSize);
-	
 	//now initialize malloc.  It's heap time!  Let's make a 4MB kernel heap for now
-	kernel_printf("Initializing Malloc\n");
 	initKernelMalloc(&masterHeap,kernelMasterRam,KERNEL_HEAP_MAX);
 	
 	//now rock the GDT
@@ -176,43 +195,37 @@ void kernel_main(void)
 	setGDT(GDT,24);
 	reloadSegments();
 	
-	kernel_printf("GDT Loaded.  Initializing Kernel Master Record\n");
-	
 	masterRecord kernelMaster;
 	kernelMaster.heapptr = (&masterHeap);
 	kernelMaster.mbootheader = (&mbh);
 	kernelMaster.pciptr = (pciRecord*)kernel_malloc(sizeof(pciRecord));
 
 	(kernelMaster.pciptr)->nextRecord = (pciRecord*)0xFFFFFFFF; //Special value to indicate it's new
-	
+
+	//check PCI bus and PS2
 	_PCI_enumerate(kernelMaster.pciptr);
-//	_PCI_output(kernelMaster.pciptr);
 	_PS2_CheckDevice();
 	
 
 	kernel_printf("Setting up interrupts\n");
 	createIDT(IDT_NUM_INTERRUPTS); //why not?
+	
 	//create for me a new IDT Entry
 	IDT_entry keyboardIDT ={.offset = (uint32_t)&isr_keyboard,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};
 	IDT_entry genericIDT ={.offset = (uint32_t)&isr_generic,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};
 	IDT_entry sysCallIDT ={.offset = (uint32_t)&sysCallHandler,.selector = KERNEL_CODE_SEGMENT,.gate = INTERRUPT_GATE,.DPL = RING_0,.present=VALID_DESCRIPTOR};	
 
-	kernel_printf("Filling IDT \n");
-	
+	//set up the IDT with generic functions
 	for(int i = 0; i < IDT_NUM_INTERRUPTS - 0x41; i++)
 		packIDTEntry(genericIDT,i);
 	
-	
-	
-	kernel_printf("Done \n");	
-	
-	kernel_printf("Adding keyboard interrupt\n");
+	//keyboard interrupt
 	packIDTEntry(keyboardIDT,1);
 	
-	kernel_printf("Adding system call interrupt\n");
+	//system call interrupt
 	packIDTEntry(sysCallIDT,SYS_CALL_OFFSET); //Note that this will be placed at SYS_CALL_OFFSET+PIC1_SCHISM_OFFSET
 	
-	kernel_printf("Setting up the PIC:\n");
+	//set up PIC
 	PIC_standard_setup();
 	
 	//enable the keyboard interrupt
@@ -221,186 +234,47 @@ void kernel_main(void)
 	//disable the timer interrupt
 	IRQ_disable(0);
 	
-	kernel_printf("Enable interrupts via sti command: \n");
 	asm("sti");
 
-	kernel_printf("Are interrupts enabled? %u\n",are_interrupts_enabled());
-	
 	ahcihba hba;
+
 	//get the correct BDF address
 	_AHCI_getBDF(kernelMaster.pciptr,&hba);
-//	hba.PCIBus = 0;
-//	hba.PCIDevice = 31;
-//	hba.PCIFunction = 2;
 	
-	//uint8_t* ahciBaseAddr = (uint8_t*)(_AHCI_getBaseAddress(hba));
 	_AHCI_getBaseAddress(&hba);
 	_AHCI_initDeviceList(&hba);
 	_AHCI_configure(&hba);
 	
-//	kernel_printf("AHCI Base Addr: %u\n",hba.baseAddr);
-	
-	//HBA diagnostic stuff. Not required unless curious
-/*	kernel_printf("HBA CAP Reg: ");
-	printBytesBinary(4,hba.baseAddr);
-	kernel_printf("\nEnter any key to continue: \n");
-	char dfs = kernel_getch();
-	dfs = kernel_getch();
-	dfs = kernel_getch();
-*/
-//	_AHCI_printDevices(hba);
-	
-	//OK...now let's see if we can initiate a command to the HDD
-	
-	//write it
-//	_ATA_sendDataFixed(&hba);
-	
-	//read it
-//	_ATA_receivedDataFixed(&hba);
-	
-	
-/*	uint8_t* prdtData = _ATA_sendID(&hba);
-	uint16_t* identData = (uint16_t*)prdtData;
-	
-	kernel_printf("First 32 bytes returned, in binary:\n");
-	printBytesBinaryLines(32,prdtData);
-	kernel_printf("\n");
-	
-	int injd = 256;
-	//kernel_printf("Word at index %u: %u\n",injd,(uint32_t)identData[injd]);
-	kernel_printf("Next five bytes after word 256: \n");
-	printBytesBinaryLines(5,identData[injd+2]);*/
-//	kernel_printf("\nEntering main loop: \n");
-//	memExploreLoop();
-	
-	/*char c = kernel_getch();
-	while(c != ESCAPE_BYTE)
-	{
-		if(c!= 0x00)
-		{
-			if(c!='\n' && c!= BACKSPACE_BYTE)
-				terminal_putchar(c);
-			else if (c == '\n')
-				terminal_handle_newline();
-			else
-				terminal_handle_backspace();
-				
-			kernel_printf("Test: %u\n",test);
-		}
-		c = kernel_getch();
-	}*/
-	
-	
-	//make sure it worked
-//	kernel_printf("Heap start: %u, Heap size: %u \n",masterHeap.heapStart,masterHeap.heapSize);
-	
-	//_PCI_enumerate();
-	/*
-	kernel_printf("Done.  Detecting PS/2 Hardware \n");
-	if(_PS2_selfTest())
-	{
-		kernel_printf("PS/2 OK\n");
-		uint32_t ps2Device = _PS2_CheckDevice();
-		kernel_printf("PS/2 device is: %d %d \n",(int)ps2Device>>8,(int)ps2Device&0xFF);
-	}
-	else
-		kernel_printf("PS/2 Failure \n");
-		
-	kernel_printf("Done.  Detecting CPU Features \n");
-	
-	/*
-		CPU Identification stuff
-	*/
-	/*	
-	unsigned int a; 
-	unsigned int b; 
-	unsigned int c;
-	unsigned int d;
 
-
-	//First get the CPU model and highest function
-	char cpuString[16] = {0};
-	int highestFunction = get_cpuModel(&a,&b,&c,&d,cpuString);
-	kernel_printf("Highest function: %d \n",highestFunction);
-	terminal_write(cpuString,12);
-	kernel_printf("\n");
-	
-	//reset the CPU stuff and figure out if it has certain features
-	a = 0;
-	b = 0; 
-	c = 0;
-	d = 0;
-	
-	//this gets the data
-	get_cpuData(1,&a,&b,&c,&d);
-	
-	//now that we have the data, check for various features
-	//check for FPU
-	int hasFPU = c&0x1;
-	//kernel_printf("Does it have FPU?: %d\n",hasFPU);
-	
-	//check for MSRs
-	int hasMSRs = (d>>5)&1;
-	//kernel_printf("Does it have MSRs?: %d\n",hasMSRs);
-	
-	//now play with AHCI
-	ahcihba hba;
-	hba.PCIBus = 0;
-	hba.PCIDevice = 31;
-	hba.PCIFunction = 2;
-	
-	uint8_t* ahciBaseAddr = (uint8_t*)(_AHCI_getBaseAddress(hba));
-	//kernel_printf("AHCI Number of ports: %u \n",_AHCI_detectPorts(hba));
-	
-	int numPorts = _AHCI_detectPorts(hba);
-	
-	//check AHCI stuff - I need to think about this a LOT more, but:
-	/*
-		ahciBaseAddr is the base address of the AHCI registers.  Now, I personally have this stored
-		as a pointer to a uint32_t, which means that if I add 1 to it I actually add
-		4 more bytes.  The port initialized register is an offset of 12 bytes, therefore
-		I need to add 3.
-		
-		When I do this, I get 0b11111111.  This means...I have 8 ports enabled? How do I know
-		how many have stuff attached to them? Perhaps by calling identify?  This does seem wrong
-		though since I shouldn't have 8 things.  The VM only has 2...
-	
-	kernel_printf("Enumerating AHCI\n");
-	for(int i = 0; i < numPorts; i++)
-	{
-		uint32_t sig = *(uint32_t *)((ahciBaseAddr + 0x100 + 0x80*i+ 0x24));
-		if(sig != 0xFFFFFFFF)
-		{
-			kernel_printf("AHCI Device found.   Signature: %u\n",sig);
-			if(sig == 0x101)
-				kernel_printf("    AHCI Device: SATA HDD\n");
-			else if (sig == 0xEB140101)
-				kernel_printf("    AHCI Device: SATA ODD\n");
-		}
-	}
-*/	
-
-	kernel_printf("Creating the standard three streams.\n Currently they are: out %u, in %u, err %u\n",kstdout,kstdin,kstderr);
+	//kernel_printf("Creating the standard three streams.\n Currently they are: out %u, in %u, err %u\n",kstdout,kstdin,kstderr);
+	//create the three standard streams
 	kstdin = fopen("kstdin","rw");
 	kstdout = fopen("kstdout","rw");
 	kstderr = fopen("kstderr","rw");
-
-	kernel_printf("And now they are: out %u, in %u, err %u\n",kstdout,kstdin,kstderr);
 	
-	putchar('A');
-	putchar('B');
-
-	//attach the current input device
+		//attach the current input device
 	curInputDev.dev = kstdin;
 	curInputDev.avail = 0;
 	
-	kernel_printf("Time to getch!: ");
-	char c = getchar();
+	kernel_printf("It's time to launch the executable \n");
+	FILE* standardIOFiles[2];
+	standardIOFiles[0] = kstdin;
+	standardIOFiles[1] = kstdout;
+	void (*exec)(void*) = executable.e_entry;
 	
-	kernel_printf("Got: ");
-	terminal_putchar(c);
-	kernel_printf("\n");
-
+	(*exec)(standardIOFiles);
+	
+	kernel_printf("Writing a sector: ");
+	char* str = "Sector 1";
+	_ATA_writeSector(&hba,1,str,18);
+	char* outString = _ATA_readSector(&hba,14);
+	
+	terminal_writestring(outString);
+	
+	//time to explore the disk a bit before using it for stuff
+	_ATA_initHDD(&hba);
+	ahciDevice* curDev = _AHCI_getHDD(hba);
+	kernel_printf("Number sectors: %u, sector size %u, and drive size %u",curDev->numSectors,curDev->sectorSize,curDev->driveSize);
 	kernel_printf("Done.  Schism Ended.");	
 
 }

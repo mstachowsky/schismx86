@@ -207,6 +207,10 @@ void _AHCI_configure(ahcihba* hba)
 		*portSERR |= 0xFFFFFFFF;
 		while(*portSERR){}
 		
+		//OK, finally malloc the scratch areas. Don't clear them, the various commands do that
+		curDev->readSectorScratch = (uint8_t*)kernel_malloc_align(0x800,4);
+		curDev->writeSectorScratch = (uint8_t*)kernel_malloc_align(0x800,4);
+		
 		kernel_printf("HBA and HDD port initialized\n");
 	}
 	else
@@ -351,6 +355,17 @@ bool _AHCI_getBDF(pciRecord* pciBus,ahcihba* hostBus)
 	}
 }
 
+ahciDevice* _AHCI_getHDD(ahcihba hostbus)
+{
+	ahciDevice* curDev = hostbus.deviceList;
+	while(curDev != 0 && curDev->type != AHCI_DEVICE_HDD)
+	{
+		curDev = curDev->next; //find the last one
+	}
+	if(curDev->type == AHCI_DEVICE_HDD)
+		return curDev;
+	return 0; //HDD not found
+}
 //print devices in the device list
 void _AHCI_printDevices(ahcihba hostBus)
 {

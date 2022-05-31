@@ -86,6 +86,12 @@ typedef struct ahciDevice{
 	struct ahciDevice* next;
 	uint8_t* cmdList; //these two pointers allow us to create the memory we need to send and receive data
 	uint8_t* received_FIS; 
+	uint8_t* readSectorScratch; //This is where a sector read goes. It must be initalized, typically
+	//in configure
+	uint8_t* writeSectorScratch; //write scratch area, again malloc it to the sector size
+	uint32_t numSectors;
+	uint32_t sectorSize;
+	uint32_t driveSize;
 }ahciDevice;
 
 //This is the FIS used to send commands to the device (H2D is "Host to Device")
@@ -185,6 +191,8 @@ uint32_t _AHCI_detectPorts(ahcihba hostBus);//gets the number of ports IMPLEMENT
 uint32_t _AHCI_initDeviceList(ahcihba* hostBus);
 bool _AHCI_getBDF(pciRecord* pciBus,ahcihba* hostBus);
 void _AHCI_activatePorts(ahcihba hostBus); //activates ports and readies them for data transfer
+
+ahciDevice* _AHCI_getHDD(ahcihba hostbust); //gets the HDD, or more accurately, the first HDD in the device list
 
 //Command creation and running
 void _AHCI_commandTable_FillFIS(uint8_t* cmdTable, void* FIS);

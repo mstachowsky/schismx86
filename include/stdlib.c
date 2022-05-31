@@ -94,8 +94,8 @@ void* kernel_malloc(uint32_t size)
 //allocates size bytes on the heap aligned properly
 void* kernel_malloc_align(uint32_t size,uint32_t alignment)
 {
-//	kernel_printf("Allocating aligned memory. TODO: There is no FREE for aligned memory!\n");
-	//basically, we add alignment to size so ensure we can align:
+	//basically, we add alignment to size so ensure we can align. This is technically quite inefficient
+	//but we're only ever going to use this for, at most, page-alignment, so 4K.
 	size = size+alignment;
 
 	//begin at the first block

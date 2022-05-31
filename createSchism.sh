@@ -51,6 +51,9 @@ echo "Done"
 echo "Compiling Standard Library"
 i686-elf-gcc -Iinclude -c include/stdlib.c -o stdlib.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 echo "Done"
+echo "Compiling ELF Loader Library"
+i686-elf-gcc -Iinclude -c include/extractElf.c -o extractElf.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+echo "Done"
 echo "Compiling GDT Library"
 i686-elf-gcc -Iinclude -Isys -Ischismlibc -c include/schismGDT.c -o schismGDT.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 #two steps: First the C, then the asm
@@ -63,7 +66,7 @@ echo "Compiling Interrupt Library"
 echo "...........Compiling PIC Lib"
 i686-elf-gcc -Iinclude -c include/schism_PIC.c -o schism_PIC.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 echo "............Compiling IDT Lib"
-i686-elf-gcc -Iinclude -c include/schism_IDT.c -o schism_IDT.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+i686-elf-gcc -Iinclude -Isys -Ischismlibc -c include/schism_IDT.c -o schism_IDT.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 echo "..............Assembling IDT ASM"
 i686-elf-as setIDTInCPU.s -o setIDTInCPU.o
 echo "..............Assembling keyboard ISR"
@@ -75,7 +78,7 @@ echo ".............Assembling system call"
 i686-elf-as include/sysCallInterrupt.s -o sysCallInterrupt.o
 echo "Done"
 echo "Compiling ISR library"
-i686-elf-gcc -Iinclude -c include/ISR_Test.c -o ISR_Test.o -std=gnu99 -ffreestanding -mgeneral-regs-only -O2 -Wall -Wextra 
+i686-elf-gcc -Iinclude -Isys -Ischismlibc  -c include/ISR_Test.c -o ISR_Test.o -std=gnu99 -ffreestanding -mgeneral-regs-only -O2 -Wall -Wextra 
 echo "Done"
 echo "Compiling mem explore library"
 i686-elf-gcc -Iinclude -c memExplore/memExplore.c -o memExplore.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra

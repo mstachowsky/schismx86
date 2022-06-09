@@ -13,7 +13,7 @@ fi
 if test -f "schism.iso"; then
 	rm schism.iso
 fi
-echo "Done"
+echo "Done."
 echo "Assembling boot.s"
 i686-elf-as  boot.s -o boot.o
 echo "Done"
@@ -53,6 +53,9 @@ i686-elf-gcc -Iinclude -c include/stdlib.c -o stdlib.o -std=gnu99 -ffreestanding
 echo "Done"
 echo "Compiling ELF Loader Library"
 i686-elf-gcc -Iinclude -c include/extractElf.c -o extractElf.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+echo "Done"
+echo "Compiling XSFS Library"
+i686-elf-gcc -Iinclude -c include/xsfs.c -o xsfs.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 echo "Done"
 echo "Compiling GDT Library"
 i686-elf-gcc -Iinclude -Isys -Ischismlibc -c include/schismGDT.c -o schismGDT.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
@@ -103,5 +106,7 @@ cp schism.iso /mnt/c/Users/tienb
 echo "+++++++++++++"
 echo "=============================="
 echo "Done! Schism is ready to go"
+echo -n "Total SLOC Count is: "
+( find ./ -name '*.c' -print0 -o -name '*.h' -print0 -o -name '*.s' -print0 -o -name '*.sh' -print0 | xargs -0 cat ) | wc -l
 echo "=============================="
 echo "+++++++++++++"

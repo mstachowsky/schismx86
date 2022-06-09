@@ -3,6 +3,8 @@
 
 #include "stdio.h"
 
+//these live in the process itself, they are not actually part of stdio
+//but stdio can access them
 FILE* stdout;
 FILE* stdin;
 

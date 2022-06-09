@@ -2,7 +2,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdarg.h>
-
 //cpuid testing
 #include <cpuid.h>
 
@@ -19,6 +18,7 @@
 #include "schism_IDT.h"
 #include "ISR_Test.h"
 #include "schismATA.h"
+#include "xsfs.h"
 
 //various standard-library system interfaces
 #include "fcntl.h"
@@ -275,6 +275,76 @@ void kernel_main(void)
 	_ATA_initHDD(&hba);
 	ahciDevice* curDev = _AHCI_getHDD(hba);
 	kernel_printf("Number sectors: %u, sector size %u, and drive size %u",curDev->numSectors,curDev->sectorSize,curDev->driveSize);
+	
+	//Now it's time to play with files
+	hdd drive;
+	drive.bytesPerSector = curDev->sectorSize;
+	drive.totSectors = curDev->numSectors;
+	drive.hostbus = &hba;
+	
+	//Now we actually need to create an initial record. 
+	kernel_printf("HDD Time drive!\n");
+	//clearFS(&drive);
+	
+	/*kernel_printf("Writing files!\n");
+	
+	createFile(120,"They are goat",0,&drive);
+	createFile(513,"Werr be goat",0,&drive);
+	
+	kernel_printf("Listing files: \n");
+	listFilesByName(&drive);
+	
+	uint8_t ret = deleteFile("Werr be goat",0,&drive);
+	
+	if(ret == FS_SUCCESS)
+	{
+		kernel_printf("Grand success\n");
+	}
+	
+	ret = deleteFile("Umlaut",0,&drive);
+	
+	
+	if(ret == NO_FILE)
+	{
+		kernel_printf("Did it\n");
+	}
+	
+	
+	
+	listFilesByName(&drive);
+	
+	kernel_printf("Reading a file!\n");
+	
+	//OK, now try to write a file
+	updateFile(15,"1234567AAABCDE","We are goat",0,&drive);
+	
+	//we need to read trhe sector, we aren't ready yet for anything else
+	uint8_t* fileRead = readFile("We are goat",0,&drive);
+	terminal_writestring(fileRead);
+	
+	char* newFile = (char*)kernel_malloc(1024);
+	for(int i = 0; i < 1024;i++)
+	{
+		newFile[i] = 65 + i%26;
+	}
+	//createFile(1024,"BigFile",0,&drive);
+	updateFile(10,"UMLAUTZIA","BigFile",0,&drive);
+	fileRead = readFile("BigFile",0,&drive);
+	terminal_writestring(fileRead);
+	
+	kernel_printf("\n");
+	listFilesByName(&drive);
 	kernel_printf("Done.  Schism Ended.");	
-
+	*/
+	
+	kernel_printf("Sizeof char: %d\n",sizeof(char));
+	kernel_printf("Sizeof bool: %d\n",sizeof(bool));
+	kernel_printf("Sizeof short: %d\n",sizeof(short int));
+	kernel_printf("Sizeof int: %d\n",sizeof(int));
+	kernel_printf("Sizeof long int: %d\n",sizeof(long int));
+	kernel_printf("Sizeof long long int: %d,\n",sizeof(long long int));
+	
+	char cds = 128;
+	kernel_printf("Do I exist as a char? %d\n",cds);
+	
 }
